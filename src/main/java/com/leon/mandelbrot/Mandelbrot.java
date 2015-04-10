@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage;
 
 public class Mandelbrot {
 
-    protected static final int MAX_ITERATIONS = 100;
+    protected static final int MAX_ITERATIONS = 150;
 
     protected Color[][] img;
     protected int width;
@@ -14,17 +14,29 @@ public class Mandelbrot {
     public Mandelbrot(int width, int height) {
         this.width = width;
         this.height = height;
-        this.img = new Color[width][height];
+        this.img = new Color[height][width];
     }
 
     public void create() {
+        System.out.println("Staring calculation of the Mandelbrot set...");
+        long start = System.currentTimeMillis();
         for (int i = 0; i < this.img.length; i++) {
-            System.out.println("Calculating Line " + (i+1));
+            if (i%100 == 0) {
+                System.out.println((100*i/this.img.length) + "% done.");
+            }
             for (int j = 0; j < this.img[i].length; j++) {
-                int iterations = this.getIterations(i, j, -2.5, 1.0, -1.0, 1.0);
+                int iterations = this.getIterations(j, i, -0.975, -0.875, 0.227, 0.327);
                 this.img[i][j] = this.getHSBColor(iterations);
             }
         }
+        long end = System.currentTimeMillis();
+        System.out.println("100% Done. Calculated a " + width + "x" + height + " image.");
+        long time = end-start;
+        System.out.println("Calculation time: " + (time/1000.0) + "s");
+        System.out.println(img[0][0]);
+        System.out.println(img[0][this.width-1]);
+        System.out.println(img[this.height-1][0]);
+        System.out.println(img[this.height-1][this.width-1]);
     }
 
     private int getIterations(
@@ -42,18 +54,24 @@ public class Mandelbrot {
         double x = 0.0;
         double y = 0.0;
         double xtmp;
+        double ytmp;
 
         while (x*x + y*y < 4.0 && i < Mandelbrot.MAX_ITERATIONS) {
             xtmp = x*x - y*y + x0;
-            y = 2.0*x*y + y0;
-            x = xtmp;
-            i++;
+            ytmp = 2.0*x*y + y0;
+            if (x == xtmp && y == ytmp) {
+                i = Mandelbrot.MAX_ITERATIONS;
+            } else {
+                x = xtmp;
+                y = ytmp;
+                i++;
+            }
         }
 
         return i;
     }
 
-    private static double pixelToCoordinate(int pixel, double leftBorder, double rightBorder, int pixels) {
+    public static double pixelToCoordinate(int pixel, double leftBorder, double rightBorder, int pixels) {
         return ((rightBorder - leftBorder) * pixel / pixels) + leftBorder;
     }
 
