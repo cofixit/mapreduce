@@ -2,17 +2,22 @@ package com.leon.mandelbrot;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.MapWritable;
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Set;
 
 /**
  * A map/reduce program that creates an animation of the mandelbrot set.
@@ -48,128 +53,6 @@ import java.io.IOException;
  */
 public class MandelbrotAnimation extends Configured implements Tool {
     private static final String TMP_DIR_PREFIX = MandelbrotAnimation.class.getSimpleName();
-    public static final String IMAGE_HEIGHT = "IMAGE_HEIGHT";
-    public static final String IMAGE_WIDTH = "IMAGE_WIDTH";
-    public static final String IMAGE_FRAMES = "IMAGE_FRAMES";
-    public static final String IMAGE_FIRST_LEFT_X_BORDER = "IMAGE_FIRST_LEFT_X_BORDER";
-    public static final String IMAGE_FIRST_RIGHT_X_BORDER = "IMAGE_FIRST_RIGHT_X_BORDER";
-    public static final String IMAGE_LAST_LEFT_X_BORDER = "IMAGE_LAST_LEFT_X_BORDER";
-    public static final String IMAGE_LAST_RIGHT_X_BORDER = "IMAGE_LAST_RIGHT_X_BORDER";
-    public static final String IMAGE_FIRST_TOP_Y_BORDER = "IMAGE_FIRST_TOP_Y_BORDER";
-    public static final String IMAGE_FIRST_BOTTOM_Y_BORDER = "IMAGE_FIRST_BOTTOM_Y_BORDER";
-    public static final String IMAGE_LAST_TOP_Y_BORDER = "IMAGE_LAST_TOP_Y_BORDER";
-    public static final String IMAGE_LAST_BOTTOM_Y_BORDER = "IMAGE_LAST_BOTTOM_Y_BORDER";
-    public static final String IMAGE_MAX_ITERATIONS = "IMAGE_MAX_ITERATIONS";
-
-    public static class MandelbrotMapper extends
-            Mapper<IntWritable, IntWritable, IntWritable, MapWritable> {
-
-        private int height;
-        private int width;
-        private int frames;
-        private double firstLeftXBorder;
-        private double firstRightXBorder;
-        private double lastLeftXBorder;
-        private double lastRightXBorder;
-        private double firstTopYBorder;
-        private double firstBottomYBorder;
-        private double lastTopYBorder;
-        private double lastBottomYBorder;
-        private int maxIterations;
-
-        /**
-         * Get the configuration parameters for calculating the images:
-         * @param context
-         * @throws IOException
-         * @throws InterruptedException
-         */
-        @Override
-        protected void setup(Context context) throws IOException, InterruptedException {
-            Configuration configuration = context.getConfiguration();
-            this.height = configuration.getInt(MandelbrotAnimation.IMAGE_HEIGHT, 500);
-            this.width = configuration.getInt(MandelbrotAnimation.IMAGE_WIDTH, 875);
-            this.frames = configuration.getInt(MandelbrotAnimation.IMAGE_FRAMES, 100);
-            this.firstLeftXBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_FIRST_LEFT_X_BORDER, -2.5);
-            this.firstRightXBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_FIRST_RIGHT_X_BORDER, 1.0);
-            this.lastLeftXBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_LAST_LEFT_X_BORDER, -0.25);
-            this.lastRightXBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_LAST_RIGHT_X_BORDER, 0.1);
-            this.firstTopYBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_FIRST_TOP_Y_BORDER, -1.0);
-            this.firstBottomYBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_FIRST_BOTTOM_Y_BORDER, 1.0);
-            this.lastTopYBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_LAST_TOP_Y_BORDER, -0.1);
-            this.lastBottomYBorder = configuration.getDouble(MandelbrotAnimation.IMAGE_LAST_BOTTOM_Y_BORDER, 0.1);
-            this.maxIterations = configuration.getInt(MandelbrotAnimation.IMAGE_MAX_ITERATIONS, 100);
-        }
-
-        @Override
-        protected void map(IntWritable frame,
-                           IntWritable row,
-                           Context context)
-                throws IOException, InterruptedException {
-            // calculate the coordinates for the pixels that shall be rendered
-            double relativeFrame = (double) frame.get() / (double) this.frames;
-            double xLeft = this.firstLeftXBorder + (this.lastLeftXBorder - this.firstLeftXBorder) * relativeFrame;
-            double xRight = this.firstRightXBorder + (this.lastRightXBorder - this.firstRightXBorder) * relativeFrame;
-            double yTop = this.firstTopYBorder + (this.lastTopYBorder - this.firstTopYBorder) * relativeFrame;
-            double yBottom = this.firstBottomYBorder + (this.lastBottomYBorder - this.firstBottomYBorder) * relativeFrame;
-
-            // calculate the y coordinate for the corresponding row
-            double y0 = ((yBottom - yTop) * row.get() / this.height) + yTop;
-
-
-            // iterate through the pixels of the row
-            IntWritable[] imgRow = new IntWritable[this.width];
-            for (int i = 0; i < imgRow.length; i++) {
-                // calculate the x coordinate of this pixel
-                double x0 = ((xRight - xLeft) * i / this.width) + xLeft;
-
-                // run the escape algorithm.
-                // check for how much iterations x+iy is in the mandelbrot set
-                int iterations = 0;
-                double x = 0.0;
-                double y = 0.0;
-                double xTemp;
-                double yTemp;
-
-                while (x*x + y*y < 4.0 && iterations < this.maxIterations) {
-                    xTemp = x*x - y*y + x0;
-                    yTemp = 2.0*x*y + y0;
-                    if (x == xTemp && y == yTemp) {
-                        i = this.maxIterations;
-                    } else {
-                        x = xTemp;
-                        y = yTemp;
-                        i++;
-                    }
-                }
-
-                // calculate the color of the pixel according to its iterations.
-                if (iterations >= this.maxIterations) {
-                    imgRow[i] = new IntWritable(new Color(0).getRGB());
-                } else {
-                    float hue = iterations / (float) this.maxIterations;
-                    imgRow[i] = new IntWritable(Color.getHSBColor(hue, 1.0f, 1.0f).getRGB());
-                }
-            }
-
-            // Done. Write calculated pixels into the key-value pair for the reduce job.
-            // Data structure: <frame; Map<row; pixels>>
-            ArrayWritable a = new ArrayWritable(IntWritable.class, imgRow);
-            MapWritable m = new MapWritable();
-            m.put(row, a);
-            context.write(frame, m);
-        }
-    }
-
-    public static class ImageReducer extends
-            Reducer<IntWritable, MapWritable, IntWritable, BytesWritable> {
-        @Override
-        protected void reduce(IntWritable key,
-                              Iterable<MapWritable> values,
-                              Context context)
-                throws IOException, InterruptedException {
-
-        }
-    }
 
     /**
      * Parses arguments and then runs a map/reduce job.
