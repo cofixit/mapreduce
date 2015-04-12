@@ -7,14 +7,33 @@ public class Mandelbrot {
 
     protected static final int MAX_ITERATIONS = 150;
 
+
     protected Color[][] img;
     protected int width;
     protected int height;
+    protected double xLeft;
+    protected double xRight;
+    protected double yTop;
+    protected double yBottom;
 
     public Mandelbrot(int width, int height) {
         this.width = width;
         this.height = height;
         this.img = new Color[height][width];
+        this.xLeft = -2.5;
+        this.xRight = 1.0;
+        this.yTop = -1.0;
+        this.yBottom = 1.0;
+    }
+
+    public Mandelbrot(int width, int height, double xLeft, double xRight, double yTop, double yBottom) {
+        this.width = width;
+        this.height = height;
+        this.img = new Color[height][width];
+        this.xLeft = xLeft;
+        this.xRight = xRight;
+        this.yTop = yTop;
+        this.yBottom = yBottom;
     }
 
     public void create() {
@@ -25,7 +44,7 @@ public class Mandelbrot {
                 System.out.println((100*i/this.img.length) + "% done.");
             }
             for (int j = 0; j < this.img[i].length; j++) {
-                int iterations = this.getIterations(j, i, -0.975, -0.875, 0.227, 0.327);
+                int iterations = this.getIterations(j, i);
                 this.img[i][j] = this.getHSBColor(iterations);
             }
         }
@@ -41,14 +60,10 @@ public class Mandelbrot {
 
     private int getIterations(
             int px,
-            int py,
-            double negativeXBorder,
-            double positiveXBorder,
-            double negativeYBorder,
-            double positiveYBorder
+            int py
     ) {
-        double x0 = Mandelbrot.pixelToCoordinate(px, negativeXBorder, positiveXBorder, this.width);
-        double y0 = Mandelbrot.pixelToCoordinate(py, positiveYBorder, negativeYBorder, this.height);
+        double x0 = Mandelbrot.pixelToCoordinate(px, this.xLeft, this.xRight, this.width);
+        double y0 = Mandelbrot.pixelToCoordinate(py, this.yBottom, this.yTop, this.height);
 
         int i = 0;
         double x = 0.0;

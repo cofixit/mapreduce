@@ -92,5 +92,14 @@
     <orderEntry type="library" exported="" name="Gradle: aopalliance:aopalliance:1.0" level="project" />
     <orderEntry type="library" exported="" name="Gradle: org.sonatype.sisu.inject:cglib:2.2.1-v20090111" level="project" />
     <orderEntry type="library" exported="" name="Gradle: org.hsqldb:hsqldb:2.3.2" level="project" />
+    <orderEntry type="module-library" exported="">
+      <library name="Gradle: AVIDemo">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/libs/AVIDemo.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
   </component>
 </module>

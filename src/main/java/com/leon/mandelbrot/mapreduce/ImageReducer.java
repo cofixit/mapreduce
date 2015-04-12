@@ -10,22 +10,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-/**
- * Created by Leon on 12.04.15.
- */
 public class ImageReducer extends
         Reducer<IntWritable, KeyValueWritable<IntWritable, ArrayWritable>, IntWritable, BytesWritable> {
 
     private int height;
     private int width;
-    private int frames;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
         Configuration configuration = context.getConfiguration();
         this.width = configuration.getInt(MandelbrotProperties.WIDTH, MandelbrotProperties.STANDARD_WIDTH);
         this.height = configuration.getInt(MandelbrotProperties.HEIGHT, MandelbrotProperties.STANDARD_HEIGHT);
-        this.frames = configuration.getInt(MandelbrotProperties.FRAMES, MandelbrotProperties.STANDARD_FRAMES);
     }
 
     @Override
@@ -39,10 +34,11 @@ public class ImageReducer extends
         for (KeyValueWritable<IntWritable, ArrayWritable> element : rows) {
             int row = element.getKey().get();
             Writable[] writableColors = element.getValue().get();
-            int[] colors = Arrays.copyOf(writableColors, writableColors.length, int[].class);
-            for (int i = 0; i < colors.length; i++) {
-                img.setRGB(i, row, colors[i]);
-            }
+
+//            int[] colors = Arrays.copyOf(writableColors, writableColors.length, int[].class);
+//            for (int i = 0; i < colors.length; i++) {
+//                img.setRGB(i, row, colors[i]);
+//            }
         }
 
         // create png file out of the image and save it as byte array.

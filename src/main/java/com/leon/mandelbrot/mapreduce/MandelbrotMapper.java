@@ -62,7 +62,6 @@ public class MandelbrotMapper
         // calculate the y coordinate for the corresponding row
         double y0 = ((yBottom - yTop) * row.get() / this.height) + yTop;
 
-
         // iterate through the pixels of the row
         IntWritable[] imgRow = new IntWritable[this.width];
         for (int i = 0; i < imgRow.length; i++) {
@@ -103,5 +102,4 @@ public class MandelbrotMapper
         ArrayWritable a = new ArrayWritable(IntWritable.class, imgRow);
         context.write(frame, new KeyValueWritable<>(row, a));
     }
-
 }
