@@ -1,19 +1,31 @@
 package com.leon.mandelbrot.mapreduce;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+
+import java.io.IOException;
+
 /**
  * A map/reduce program that creates an animation of the mandelbrot set.
  * Given input parameters:
  *  - width: The width of the animated image in pixels
  *  - height: The height of the animated image in pixels
  *  - frames: The amount of the frames
- *  - left X border at beginning
- *  - right X border at beginning
- *  - left X border at end
- *  - right X border at end
- *  - left Y border at beginning
- *  - right Y border at beginning
- *  - left Y border at end
- *  - right Y border at end
+ *  - firstScale: The multiplier for both x and y coordinate axis.
+ *           A scale of 1 translates to the x interval being [-0.5,0.5].
+ *  - firstTranslateX: Move the coordinate center to the right/left
+ *  - firstTranslateY: Move the coordinate center to the top/bottom
+ *  - lastScale, lastTranslateX, lastTranslateY
+ *
  *
  * Mapper:
  *      The mapper's task is to calculate the colors of the given image frame.
@@ -33,4 +45,107 @@ package com.leon.mandelbrot.mapreduce;
  *      create a gif out of them.
  */
 public class MandelbrotMapReduce {
+
+    /**
+     * Run a map/reduce job to create a mandelbrot animation.
+     */
+    public static void createMandelbrotAnimation(
+            int width,
+            int height,
+            int frames,
+            double firstScale,
+            double firstTranslateX,
+            double firstTranslateY,
+            double lastScale,
+            double lastTranslateX,
+            double lastTranslateY,
+            Path tmpDir,
+            Configuration conf
+    ) throws IOException, ClassNotFoundException, InterruptedException {
+        Job job = Job.getInstance(conf);
+
+        // Set up Job configuration
+        job.setJobName(MandelbrotMapReduce.class.getSimpleName());
+        job.setJarByClass(MandelbrotMapReduce.class);
+
+        job.setInputFormatClass(SequenceFileInputFormat.class);
+
+        job.setOutputKeyClass(IntWritable.class);
+        job.setOutputValueClass(BytesWritable.class);
+        job.setOutputFormatClass(SequenceFileOutputFormat.class);
+
+        job.setMapperClass(MandelbrotMapper.class);
+
+        job.setReducerClass(ImageReducer.class);
+        job.setNumReduceTasks(frames);
+
+        final Path inDir = new Path(tmpDir, "in");
+        final Path outDir = new Path(tmpDir, "out");
+        FileInputFormat.setInputPaths(job, inDir);
+        FileOutputFormat.setOutputPath(job, outDir);
+        
+        final FileSystem fs = FileSystem.get(conf);
+        if (fs.exists(tmpDir)) {
+            throw new IOException("Tmp directory " + fs.makeQualified(tmpDir)
+                + " already exists. Please remove it first.");   
+        }
+        if (!fs.mkdirs(inDir)) {
+            throw new IOException("Cannot create input directory " + inDir);
+        }
+        
+        try {
+            // generate an input file for each map task
+            for (int i = 0; i < frames; i++) {
+                for (int j = 0; j < height; j++) {
+                    final Path file = new Path(inDir, "part" + i + "_" + j);
+                    final IntWritable frame = new IntWritable(i);
+                    final IntWritable row = new IntWritable(j);
+                    final SequenceFile.Writer writer = SequenceFile.createWriter(
+                            conf, 
+                            SequenceFile.Writer.file(file),
+                            SequenceFile.Writer.keyClass(IntWritable.class),
+                            SequenceFile.Writer.valueClass(IntWritable.class),
+                            SequenceFile.Writer.compression(SequenceFile.CompressionType.NONE)
+                    );
+                    try {
+                        writer.append(frame, row);
+                    } finally {
+                        writer.close();
+                    }
+                }
+                System.out.println("Wrote input for Frame #" + i);
+            }
+
+            // start a map/reduce job
+            System.out.println("Starting job");
+            final long startTime = System.currentTimeMillis();
+            job.waitForCompletion(true);
+            final double duration = (System.currentTimeMillis() - startTime) / 1000.0;
+            System.out.println("Job Finished in " + duration + " seconds");
+
+            // read outputs
+            for (int i = 0; i < frames; i++) {
+                Path inFile = new Path(outDir, "reduce-out_" + i);
+                IntWritable frame = new IntWritable();
+                BytesWritable image = new BytesWritable();
+                SequenceFile.Reader reader = new SequenceFile.Reader(
+                        conf,
+                        SequenceFile.Reader.file(inFile));
+                try {
+                    while (reader.next(frame, image)) {
+                        // add image to an avi video creator
+                    }
+                } finally {
+                    reader.close();
+                }
+            }
+
+        } finally {
+            fs.delete(tmpDir, true);
+        }
+
+    }
+
+
+
 }

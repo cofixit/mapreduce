@@ -33,12 +33,11 @@ public class ImageReducer extends
         BufferedImage img = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_RGB);
         for (KeyValueWritable<IntWritable, ArrayWritable> element : rows) {
             int row = element.getKey().get();
-            Writable[] writableColors = element.getValue().get();
-
-//            int[] colors = Arrays.copyOf(writableColors, writableColors.length, int[].class);
-//            for (int i = 0; i < colors.length; i++) {
-//                img.setRGB(i, row, colors[i]);
-//            }
+            Writable[] colorWritables = element.getValue().get();
+            for (int i = 0; i < colorWritables.length; i++) {
+                IntWritable color = (IntWritable) colorWritables[i];
+                img.setRGB(i, row, color.get());
+            }
         }
 
         // create png file out of the image and save it as byte array.
