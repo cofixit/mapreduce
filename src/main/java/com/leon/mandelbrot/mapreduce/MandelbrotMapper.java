@@ -3,7 +3,6 @@ package com.leon.mandelbrot.mapreduce;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import java.awt.*;
@@ -15,14 +14,14 @@ public class MandelbrotMapper
     private int height;
     private int width;
     private int frames;
-    private double firstLeftXBorder;
-    private double firstRightXBorder;
-    private double lastLeftXBorder;
-    private double lastRightXBorder;
-    private double firstTopYBorder;
-    private double firstBottomYBorder;
-    private double lastTopYBorder;
-    private double lastBottomYBorder;
+
+    private double firstScale;
+    private double firstTranslateX;
+    private double firstTranslateY;
+    private double lastScale;
+    private double lastTranslateX;
+    private double lastTranslateY;
+
     private int maxIterations;
 
     /**
@@ -37,14 +36,13 @@ public class MandelbrotMapper
         this.width = configuration.getInt(MandelbrotProperties.WIDTH, MandelbrotProperties.STANDARD_WIDTH);
         this.frames = configuration.getInt(MandelbrotProperties.FRAMES, MandelbrotProperties.STANDARD_FRAMES);
         this.maxIterations = configuration.getInt(MandelbrotProperties.MAX_ITERATIONS, MandelbrotProperties.STANDARD_MAX_ITERATIONS);
-        this.firstLeftXBorder = configuration.getDouble(MandelbrotProperties.FIRST_LEFT_X_BORDER, MandelbrotProperties.STANDARD_FIRST_LEFT_X_BORDER);
-        this.firstRightXBorder = configuration.getDouble(MandelbrotProperties.FIRST_RIGHT_X_BORDER, MandelbrotProperties.STANDARD_FIRST_RIGHT_X_BORDER);
-        this.lastLeftXBorder = configuration.getDouble(MandelbrotProperties.LAST_LEFT_X_BORDER, MandelbrotProperties.STANDARD_LAST_LEFT_X_BORDER);
-        this.lastRightXBorder = configuration.getDouble(MandelbrotProperties.LAST_RIGHT_X_BORDER, MandelbrotProperties.STANDARD_LAST_RIGHT_X_BORDER);
-        this.firstTopYBorder = configuration.getDouble(MandelbrotProperties.FIRST_TOP_Y_BORDER, MandelbrotProperties.STANDARD_FIRST_TOP_Y_BORDER);
-        this.firstBottomYBorder = configuration.getDouble(MandelbrotProperties.FIRST_BOTTOM_Y_BORDER, MandelbrotProperties.STANDARD_FIRST_BOTTOM_Y_BORDER);
-        this.lastTopYBorder = configuration.getDouble(MandelbrotProperties.LAST_TOP_Y_BORDER, MandelbrotProperties.STANDARD_LAST_TOP_Y_BORDER);
-        this.lastBottomYBorder = configuration.getDouble(MandelbrotProperties.LAST_BOTTOM_Y_BORDER, MandelbrotProperties.STANDARD_LAST_BOTTOM_Y_BORDER);
+
+        this.firstScale = configuration.getDouble(MandelbrotProperties.FIRST_SCALE, MandelbrotProperties.STANDARD_FIRST_SCALE);
+        this.firstTranslateX = configuration.getDouble(MandelbrotProperties.FIRST_TRANSLATE_X, MandelbrotProperties.STANDARD_FIRST_TRANSLATE_X);
+        this.firstTranslateY = configuration.getDouble(MandelbrotProperties.FIRST_TRANSLATE_Y, MandelbrotProperties.STANDARD_FIRST_TRANSLATE_Y);
+        this.lastScale = configuration.getDouble(MandelbrotProperties.LAST_SCALE, MandelbrotProperties.STANDARD_LAST_SCALE);
+        this.lastTranslateX = configuration.getDouble(MandelbrotProperties.LAST_TRANSLATE_X, MandelbrotProperties.STANDARD_LAST_TRANSLATE_X);
+        this.lastTranslateY = configuration.getDouble(MandelbrotProperties.LAST_TRANSLATE_Y, MandelbrotProperties.STANDARD_LAST_TRANSLATE_Y);
     }
 
     @Override
@@ -54,19 +52,19 @@ public class MandelbrotMapper
             throws IOException, InterruptedException {
         // calculate the coordinates for the pixels that shall be rendered
         double relativeFrame = (double) frame.get() / (double) this.frames;
-        double xLeft = this.firstLeftXBorder + (this.lastLeftXBorder - this.firstLeftXBorder) * relativeFrame;
-        double xRight = this.firstRightXBorder + (this.lastRightXBorder - this.firstRightXBorder) * relativeFrame;
-        double yTop = this.firstTopYBorder + (this.lastTopYBorder - this.firstTopYBorder) * relativeFrame;
-        double yBottom = this.firstBottomYBorder + (this.lastBottomYBorder - this.firstBottomYBorder) * relativeFrame;
+        double scaleX = this.firstScale + (this.lastScale - this.firstScale) * relativeFrame;
+        double scaleY = scaleX * this.height / this.width;
+        double translateX = this.firstTranslateX + (this.lastTranslateX - this.firstTranslateX) * relativeFrame;
+        double translateY = this.firstTranslateY + (this.lastTranslateY - this.firstTranslateY) * relativeFrame;
 
         // calculate the y coordinate for the corresponding row
-        double y0 = ((yBottom - yTop) * row.get() / this.height) + yTop;
+        double y0 = scaleY/2 - (row.get()*scaleY)/this.height + translateY;
 
         // iterate through the pixels of the row
         IntWritable[] imgRow = new IntWritable[this.width];
         for (int i = 0; i < imgRow.length; i++) {
             // calculate the x coordinate of this pixel
-            double x0 = ((xRight - xLeft) * i / this.width) + xLeft;
+            double x0 = (i * scaleX)/this.width - scaleX/2 + translateX;
 
             // run the escape algorithm.
             // check for how much iterations x+iy is in the mandelbrot set
