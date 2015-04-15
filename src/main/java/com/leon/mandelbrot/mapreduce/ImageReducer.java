@@ -10,7 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class ImageReducer extends
-        Reducer<IntWritable, KeyValueWritable<IntWritable, ArrayWritable>, IntWritable, BytesWritable> {
+        Reducer<IntWritable, KeyValueWritable, IntWritable, BytesWritable> {
 
     private int height;
     private int width;
@@ -24,13 +24,13 @@ public class ImageReducer extends
 
     @Override
     protected void reduce(IntWritable frame,
-                          Iterable<KeyValueWritable<IntWritable, ArrayWritable>> rows,
+                          Iterable<KeyValueWritable> rows,
                           Context context)
             throws IOException, InterruptedException {
 
         // write the rows sent from the map job into a picture
         BufferedImage img = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_RGB);
-        for (KeyValueWritable<IntWritable, ArrayWritable> element : rows) {
+        for (KeyValueWritable element : rows) {
             int row = element.getKey().get();
             Writable[] colorWritables = element.getValue().get();
             for (int i = 0; i < colorWritables.length; i++) {

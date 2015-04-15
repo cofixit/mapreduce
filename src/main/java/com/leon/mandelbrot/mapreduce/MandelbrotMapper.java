@@ -3,13 +3,14 @@ package com.leon.mandelbrot.mapreduce;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import java.awt.*;
 import java.io.IOException;
 
 public class MandelbrotMapper
-        extends Mapper<IntWritable, IntWritable, IntWritable, KeyValueWritable<IntWritable, ArrayWritable>> {
+        extends Mapper<LongWritable, LongWritable, IntWritable, KeyValueWritable> {
 
     private int height;
     private int width;
@@ -46,9 +47,27 @@ public class MandelbrotMapper
     }
 
     @Override
-    protected void map(IntWritable frame,
-                       IntWritable row,
+    protected void map(LongWritable offset,
+                       LongWritable size,
                        Context context)
+            throws IOException, InterruptedException {
+        context.setStatus("Calculating combined rows " + offset.get() + " to " + (offset.get()+size.get()));
+        for (long i = 0; i < size.get(); i++) {
+            long combinedRow = offset.get() + i;
+            long longFrame = combinedRow / this.height;
+            long longRow = combinedRow % this.height;
+            IntWritable frame = new IntWritable((int)longFrame);
+            IntWritable row = new IntWritable((int)longRow);
+            calculateRow(frame, row, context);
+            if (i % 500 == 0) {
+                context.setStatus("Ran " + i + " iterations (offset: " + offset.get() + ")");
+            }
+        }
+    }
+
+    protected void calculateRow(IntWritable frame,
+                                IntWritable row,
+                                Context context)
             throws IOException, InterruptedException {
         // calculate the coordinates for the pixels that shall be rendered
         double relativeFrame = (double) frame.get() / (double) this.frames;
@@ -78,11 +97,11 @@ public class MandelbrotMapper
                 xTemp = x*x - y*y + x0;
                 yTemp = 2.0*x*y + y0;
                 if (x == xTemp && y == yTemp) {
-                    i = this.maxIterations;
+                    iterations = this.maxIterations;
                 } else {
                     x = xTemp;
                     y = yTemp;
-                    i++;
+                    iterations++;
                 }
             }
 
@@ -98,6 +117,6 @@ public class MandelbrotMapper
         // Done. Write calculated pixels into the key-value pair for the reduce job.
         // Data structure: <frame; Map<row; pixels>>
         ArrayWritable a = new ArrayWritable(IntWritable.class, imgRow);
-        context.write(frame, new KeyValueWritable<>(row, a));
+        context.write(frame, new KeyValueWritable(row, a));
     }
 }

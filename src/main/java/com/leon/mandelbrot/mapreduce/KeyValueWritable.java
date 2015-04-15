@@ -1,17 +1,20 @@
 package com.leon.mandelbrot.mapreduce;
 
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableFactories;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class KeyValueWritable<K extends Writable, V extends Writable> implements Writable {
+public class KeyValueWritable implements Writable {
 
-    private K key;
-    private V value;
+    private IntWritable key;
+    private ArrayWritable value;
 
-    public KeyValueWritable(K key, V value) {
+    public KeyValueWritable(IntWritable key, ArrayWritable value) {
         this.key = key;
         this.value = value;
     }
@@ -20,36 +23,40 @@ public class KeyValueWritable<K extends Writable, V extends Writable> implements
 
     }
 
-    public void set(K key, V value) {
+    public void set(IntWritable key, ArrayWritable value) {
         this.key = key;
         this.value = value;
     }
 
-    public void setKey(K key) {
+    public void setKey(IntWritable key) {
         this.key = key;
     }
 
-    public void setValue(V value) {
+    public void setValue(ArrayWritable value) {
         this.value = value;
     }
 
-    public K getKey() {
+    public IntWritable getKey() {
         return this.key;
     }
 
-    public V getValue() {
+    public ArrayWritable getValue() {
         return this.value;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-        key.write(out);
-        value.write(out);
+        if (key != null) key.write(out);
+        if (value != null) value.write(out);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        key.readFields(in);
-        value.readFields(in);
+        IntWritable readKey = new IntWritable();
+        ArrayWritable readValue = new ArrayWritable(IntWritable.class);
+        readKey.readFields(in);
+        readValue.readFields(in);
+        this.key = readKey;
+        this.value = readValue;
     }
 }

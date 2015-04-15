@@ -4,9 +4,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
@@ -94,9 +92,11 @@ public class MandelbrotMapReduce extends Configured implements Tool{
      * @throws InterruptedException
      */
     public static void createMandelbrotAnimation(
+            int nMaps,
             int width,
             int height,
             int frames,
+            int maxIterations,
             double firstScale,
             double firstTranslateX,
             double firstTranslateY,
@@ -110,6 +110,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
         conf.setInt(MandelbrotProperties.WIDTH, width);
         conf.setInt(MandelbrotProperties.HEIGHT, height);
         conf.setInt(MandelbrotProperties.FRAMES, frames);
+        conf.setInt(MandelbrotProperties.MAX_ITERATIONS, maxIterations);
         conf.setDouble(MandelbrotProperties.FIRST_SCALE, firstScale);
         conf.setDouble(MandelbrotProperties.FIRST_TRANSLATE_X, firstTranslateX);
         conf.setDouble(MandelbrotProperties.FIRST_TRANSLATE_Y, firstTranslateY);
@@ -117,7 +118,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
         conf.setDouble(MandelbrotProperties.LAST_TRANSLATE_X, lastTranslateX);
         conf.setDouble(MandelbrotProperties.LAST_TRANSLATE_Y, lastTranslateY);
         // run the actual function (as the parameters are now saved in the configuration)
-        createMandelbrotAnimation(tmpDir, conf);
+        createMandelbrotAnimation(nMaps, tmpDir, conf);
     }
 
     /**
@@ -130,6 +131,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
      * @throws InterruptedException
      */
     public static void createMandelbrotAnimation(
+            int nMaps,
             Path tmpDir,
             Configuration conf
     ) throws IOException, ClassNotFoundException, InterruptedException {
@@ -149,6 +151,10 @@ public class MandelbrotMapReduce extends Configured implements Tool{
 
         job.setOutputKeyClass(IntWritable.class);
         job.setOutputValueClass(BytesWritable.class);
+
+        job.setMapOutputKeyClass(IntWritable.class);
+        job.setMapOutputValueClass(KeyValueWritable.class);
+
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
         job.setMapperClass(MandelbrotMapper.class);
@@ -158,6 +164,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
 
         final Path inDir = new Path(tmpDir, "in");
         final Path outDir = new Path(tmpDir, "out");
+        final Path resultDir = new Path("mandelbrot_result");
         FileInputFormat.setInputPaths(job, inDir);
         FileOutputFormat.setOutputPath(job, outDir);
         
@@ -169,25 +176,41 @@ public class MandelbrotMapReduce extends Configured implements Tool{
         if (!fs.mkdirs(inDir)) {
             throw new IOException("Cannot create input directory " + inDir);
         }
-        
+
         try {
-            // generate an input file for each map task
-            for (int i = 0; i < frames; i++) {
-                for (int j = 0; j < height; j++) {
-                    final Path file = new Path(inDir, "part" + i + "_" + j);
-                    final IntWritable frame = new IntWritable(i);
-                    final IntWritable row = new IntWritable(j);
-                    try (SequenceFile.Writer writer = SequenceFile.createWriter(
-                            conf,
-                            SequenceFile.Writer.file(file),
-                            SequenceFile.Writer.keyClass(IntWritable.class),
-                            SequenceFile.Writer.valueClass(IntWritable.class),
-                            SequenceFile.Writer.compression(SequenceFile.CompressionType.NONE)
-                    )) {
-                        writer.append(frame, row);
+            long completeRows = (long)frames * (long)height;
+            long rowsPerMapper = completeRows / (long)nMaps;
+            long unassignedRows = completeRows % nMaps;
+            // If the amount of unassigned rows is more than half of the rows per mapper,
+            // add another mapper.
+            boolean useExtraMapper = false;
+            if (unassignedRows != 0) {
+                useExtraMapper = (rowsPerMapper / unassignedRows) < 2;
+            }
+            if (useExtraMapper) {
+                nMaps++;
+            }
+
+            for (int i = 0; i < nMaps; i++) {
+                final Path file = new Path(inDir, "part" + i);
+                final LongWritable offset = new LongWritable(i*rowsPerMapper);
+                final LongWritable size = new LongWritable(rowsPerMapper);
+                if (i == nMaps - 1) {
+                    if (useExtraMapper) {
+                        size.set(unassignedRows);
+                    } else {
+                        size.set(unassignedRows+rowsPerMapper);
                     }
                 }
-                System.out.println("Wrote input for Frame #" + i);
+                try (SequenceFile.Writer writer = SequenceFile.createWriter(
+                        conf,
+                        SequenceFile.Writer.file(file),
+                        SequenceFile.Writer.keyClass(LongWritable.class),
+                        SequenceFile.Writer.valueClass(LongWritable.class),
+                        SequenceFile.Writer.compression(SequenceFile.CompressionType.NONE)
+                )) {
+                    writer.append(offset, size);
+                }
             }
 
             // start a map/reduce job
@@ -196,6 +219,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
             job.waitForCompletion(true);
             final double duration = (System.currentTimeMillis() - startTime) / 1000.0;
             System.out.println("Job Finished in " + duration + " seconds");
+
 
             // read outputs and write them into a video
             AVIWriter out = null;
@@ -209,7 +233,15 @@ public class MandelbrotMapReduce extends Configured implements Tool{
             );
             try {
                 // set up video
-                Path video = new Path(outDir, "mandelbrot.avi");
+                Path video = new Path(resultDir, "mandelbrot.avi");
+                int pathTries = 0;
+                while (fs.exists(video) && pathTries < 100) {
+                    video = new Path(resultDir, "mandelbrot" + pathTries + ".avi");
+                    pathTries++;
+                }
+                if (fs.exists(video)) {
+                    throw new IOException("Too many mandelbrot videos!");
+                }
                 OutputStream os = video.getFileSystem(conf).create(video);
                 ImageOutputStream ios = ImageIO.createImageOutputStream(os);
                 out = new AVIWriter(ios);
@@ -217,7 +249,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                 out.setPalette(0, ColorModel.getRGBdefault());
 
                 for (int i = 0; i < frames; i++) {
-                    Path inFile = new Path(outDir, "reduce-out_" + i);
+                    Path inFile = new Path(outDir, String.format("part-r-%05d", i));
                     IntWritable frame = new IntWritable();
                     BytesWritable image = new BytesWritable();
                     try (SequenceFile.Reader reader = new SequenceFile.Reader(
@@ -242,23 +274,91 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                 }
             }
         } finally {
-            fs.delete(tmpDir, true);
+            fs.delete(inDir, true);
+            fs.delete(outDir, true);
         }
     }
 
     @Override
     public int run(String[] args) throws Exception {
-        // TODO: Take care of arguments
-        if (args.length > 0) {
+        if (args.length != 1 && args.length != 11) {
+            System.err.println("Usage: "
+                    + getClass().getName()
+                    + " <nMaps> [<width> <height> <frames> <maxIterations>" +
+                    "<firstScale> <firstTranslateX> <firstTranslateY> " +
+                    "<lastScale> <lsatTranslateX> <latTranslateY>]");
             ToolRunner.printGenericCommandUsage(System.err);
             return 2;
+        }
+
+        final int nMaps = Integer.parseInt(args[0]);
+        final int width;
+        final int height;
+        final int frames;
+        final int maxIterations;
+
+        final double firstScale;
+        final double firstTranslateX;
+        final double firstTranslateY;
+
+        final double lastScale;
+        final double lastTranslateX;
+        final double lastTranslateY;
+
+        if (args.length == 11) {
+            width = Integer.parseInt(args[1]);
+            height = Integer.parseInt(args[2]);
+            frames = Integer.parseInt(args[3]);
+            maxIterations = Integer.parseInt(args[4]);
+
+            firstScale = Double.parseDouble(args[5]);
+            firstTranslateX = Double.parseDouble(args[6]);
+            firstTranslateY = Double.parseDouble(args[7]);
+
+            lastScale = Double.parseDouble(args[8]);
+            lastTranslateX = Double.parseDouble(args[9]);
+            lastTranslateY = Double.parseDouble(args[10]);
+        } else {
+            width = MandelbrotProperties.STANDARD_WIDTH;
+            height = MandelbrotProperties.STANDARD_HEIGHT;
+            frames = MandelbrotProperties.STANDARD_FRAMES;
+            maxIterations = MandelbrotProperties.STANDARD_MAX_ITERATIONS;
+
+            firstScale = MandelbrotProperties.STANDARD_FIRST_SCALE;
+            firstTranslateX = MandelbrotProperties.STANDARD_FIRST_TRANSLATE_X;
+            firstTranslateY = MandelbrotProperties.STANDARD_FIRST_TRANSLATE_Y;
+            lastScale = MandelbrotProperties.STANDARD_LAST_SCALE;
+            lastTranslateX = MandelbrotProperties.STANDARD_LAST_TRANSLATE_X;
+            lastTranslateY = MandelbrotProperties.STANDARD_LAST_TRANSLATE_Y;
         }
 
         long now = System.currentTimeMillis();
         int rand = new Random().nextInt(Integer.MAX_VALUE);
         final Path tmpDir = new Path(TMP_DIR_PREFIX + "_" + now + "_" + rand);
 
-        createMandelbrotAnimation(tmpDir, getConf());
+        if (args.length == 1) {
+            System.out.println("Number of Maps: " + nMaps);
+            createMandelbrotAnimation(nMaps, tmpDir, getConf());
+        } else {
+            System.out.println("Number of Maps:               " + nMaps);
+            System.out.println("Width:                        " + width);
+            System.out.println("Height:                       " + height);
+            System.out.println("Frames:                       " + frames);
+            System.out.println("Maximum Iterations:           " + maxIterations);
+            System.out.println("Scale of First Frame:         " + firstScale);
+            System.out.println("x-Translation of First Frame: " + firstTranslateX);
+            System.out.println("y-Translation of First Frame: " + firstTranslateY);
+            System.out.println("Scale of Last Frame:          " + lastScale);
+            System.out.println("x-Translation of Last Frame:  " + lastTranslateX);
+            System.out.println("y-Translation of Last Frame:  " + lastTranslateY);
+
+            createMandelbrotAnimation(
+                    nMaps, width, height, frames, maxIterations,
+                    firstScale, firstTranslateX, firstTranslateY,
+                    lastScale, lastTranslateX, lastTranslateY,
+                    tmpDir, getConf());
+        }
+
         return 0;
     }
 
