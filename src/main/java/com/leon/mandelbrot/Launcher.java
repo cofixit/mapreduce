@@ -8,7 +8,7 @@ import java.io.IOException;
 public class Launcher {
 
     public static void main(String[] args) {
-        Mandelbrot m = new Mandelbrot(875, 500);
+        Mandelbrot m = new Mandelbrot(3000, 2000);
         m.create();
         BufferedImage img = m.getImage();
 

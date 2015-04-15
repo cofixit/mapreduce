@@ -11,29 +11,31 @@ public class Mandelbrot {
     protected Color[][] img;
     protected int width;
     protected int height;
-    protected double xLeft;
-    protected double xRight;
-    protected double yTop;
-    protected double yBottom;
+
+    protected double scale;
+    protected double yScale;
+    protected double translateX;
+    protected double translateY;
+
 
     public Mandelbrot(int width, int height) {
         this.width = width;
         this.height = height;
         this.img = new Color[height][width];
-        this.xLeft = -2.5;
-        this.xRight = 1.0;
-        this.yTop = -1.0;
-        this.yBottom = 1.0;
+        this.scale = 3.5;
+        this.yScale = this.scale * this.height / this.width;
+        this.translateX = -0.75;
+        this.translateY = 0.0;
     }
 
-    public Mandelbrot(int width, int height, double xLeft, double xRight, double yTop, double yBottom) {
+    public Mandelbrot(int width, int height, double scale, double translateX, double translateY) {
         this.width = width;
         this.height = height;
         this.img = new Color[height][width];
-        this.xLeft = xLeft;
-        this.xRight = xRight;
-        this.yTop = yTop;
-        this.yBottom = yBottom;
+        this.scale = scale;
+        this.yScale = this.scale * this.height / this.width;
+        this.translateX = translateX;
+        this.translateY = translateY;
     }
 
     public void create() {
@@ -52,18 +54,14 @@ public class Mandelbrot {
         System.out.println("100% Done. Calculated a " + width + "x" + height + " image.");
         long time = end-start;
         System.out.println("Calculation time: " + (time/1000.0) + "s");
-        System.out.println(img[0][0]);
-        System.out.println(img[0][this.width-1]);
-        System.out.println(img[this.height-1][0]);
-        System.out.println(img[this.height-1][this.width-1]);
     }
 
     private int getIterations(
             int px,
             int py
     ) {
-        double x0 = Mandelbrot.pixelToCoordinate(px, this.xLeft, this.xRight, this.width);
-        double y0 = Mandelbrot.pixelToCoordinate(py, this.yBottom, this.yTop, this.height);
+        double x0 = this.xPixelToCoordinate(px);
+        double y0 = this.yPixelToCoordinate(py);
 
         int i = 0;
         double x = 0.0;
@@ -86,8 +84,12 @@ public class Mandelbrot {
         return i;
     }
 
-    public static double pixelToCoordinate(int pixel, double leftBorder, double rightBorder, int pixels) {
-        return ((rightBorder - leftBorder) * pixel / pixels) + leftBorder;
+    protected double xPixelToCoordinate(int px) {
+        return (px * this.scale)/this.width - this.scale/2 + this.translateX;
+    }
+
+    protected double yPixelToCoordinate(int py) {
+        return this.yScale/2 - (py*this.yScale)/this.height + this.translateY;
     }
 
     protected Color getHSBColor(int iterations) {

@@ -11,8 +11,24 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.monte.media.Format;
+import org.monte.media.FormatKeys;
+import org.monte.media.avi.AVIWriter;
+import org.monte.media.math.Rational;
 
+import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import static org.monte.media.FormatKeys.EncodingKey;
+import static org.monte.media.FormatKeys.FrameRateKey;
+import static org.monte.media.FormatKeys.MediaTypeKey;
+import static org.monte.media.VideoFormatKeys.*;
 
 /**
  * A map/reduce program that creates an animation of the mandelbrot set.
@@ -62,6 +78,26 @@ public class MandelbrotMapReduce {
             Path tmpDir,
             Configuration conf
     ) throws IOException, ClassNotFoundException, InterruptedException {
+        conf.setInt(MandelbrotProperties.WIDTH, width);
+        conf.setInt(MandelbrotProperties.HEIGHT, height);
+        conf.setInt(MandelbrotProperties.FRAMES, frames);
+        conf.setDouble(MandelbrotProperties.FIRST_SCALE, firstScale);
+        conf.setDouble(MandelbrotProperties.FIRST_TRANSLATE_X, firstTranslateX);
+        conf.setDouble(MandelbrotProperties.FIRST_TRANSLATE_Y, firstTranslateY);
+        conf.setDouble(MandelbrotProperties.LAST_SCALE, lastScale);
+        conf.setDouble(MandelbrotProperties.LAST_TRANSLATE_X, lastTranslateX);
+        conf.setDouble(MandelbrotProperties.LAST_TRANSLATE_Y, lastTranslateY);
+    }
+    public static void createMandelbrotAnimation(
+            Path tmpDir,
+            Configuration conf
+    ) throws IOException, ClassNotFoundException, InterruptedException {
+
+        // fetch some needed configuration parameters, or their default
+        int width = conf.getInt(MandelbrotProperties.WIDTH, MandelbrotProperties.STANDARD_WIDTH);
+        int height = conf.getInt(MandelbrotProperties.HEIGHT, MandelbrotProperties.STANDARD_HEIGHT);
+        int frames = conf.getInt(MandelbrotProperties.FRAMES, MandelbrotProperties.STANDARD_FRAMES);
+
         Job job = Job.getInstance(conf);
 
         // Set up Job configuration
@@ -123,29 +159,54 @@ public class MandelbrotMapReduce {
             final double duration = (System.currentTimeMillis() - startTime) / 1000.0;
             System.out.println("Job Finished in " + duration + " seconds");
 
-            // read outputs
-            for (int i = 0; i < frames; i++) {
-                Path inFile = new Path(outDir, "reduce-out_" + i);
-                IntWritable frame = new IntWritable();
-                BytesWritable image = new BytesWritable();
-                SequenceFile.Reader reader = new SequenceFile.Reader(
-                        conf,
-                        SequenceFile.Reader.file(inFile));
-                try {
-                    while (reader.next(frame, image)) {
-                        // add image to an avi video creator
-                    }
-                } finally {
-                    reader.close();
-                }
-            }
+            // read outputs and write them into a video
+            AVIWriter out = null;
+            Format format = new Format(
+                    EncodingKey, ENCODING_AVI_PNG,
+                    DepthKey, 24,
+                    MediaTypeKey, FormatKeys.MediaType.VIDEO,
+                    FrameRateKey, new Rational(30, 1),
+                    WidthKey, width,
+                    HeightKey, height
+            );
+            try {
+                // set up video
+                Path video = new Path(outDir, "mandelbrot.avi");
+                OutputStream os = video.getFileSystem(conf).create(video);
+                ImageOutputStream ios = ImageIO.createImageOutputStream(os);
+                out = new AVIWriter(ios);
+                out.addTrack(format);
+                out.setPalette(0, ColorModel.getRGBdefault());
 
+                for (int i = 0; i < frames; i++) {
+                    Path inFile = new Path(outDir, "reduce-out_" + i);
+                    IntWritable frame = new IntWritable();
+                    BytesWritable image = new BytesWritable();
+                    SequenceFile.Reader reader = new SequenceFile.Reader(
+                            conf,
+                            SequenceFile.Reader.file(inFile));
+                    try {
+                        int readerIteration = 0;
+                        while (reader.next(frame, image)) {
+                            InputStream in = new ByteArrayInputStream(image.copyBytes());
+                            BufferedImage img = ImageIO.read(in);
+                            out.write(0, img, 1);
+                            readerIteration++;
+                            if (readerIteration > 1) {
+                                System.err.println("Somehow more than one frame came up in one sequence file...");
+                                System.err.println("File: " + inFile.getName());
+                            }
+                        }
+                    } finally {
+                        reader.close();
+                    }
+                }
+            } finally {
+                out.close();
+            }
         } finally {
             fs.delete(tmpDir, true);
         }
 
     }
-
-
-
 }
