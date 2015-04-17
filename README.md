@@ -3,8 +3,8 @@ This is about creating a zoom animation on a mandelbrot set with a MapReduce Fun
 
 ## How to run this Map/Reduce Job
 1. Clone this project
-2. Run ./gradlew shadowJar
-3. Run hadoop jar build/libs/mandelbrot-1.0.jar com.leon.mandelbrot.mapreduce.MandelbrotMapReduce
+2. Run `./gradlew shadowJar`
+3. Run `hadoop jar build/libs/mandelbrot-1.0.jar com.leon.mandelbrot.mapreduce.MandelbrotMapReduce`
 It will show you an error message, but it will also teach you how to set the parameters for the job.
 
 ## How to import the project into IntlliJ
