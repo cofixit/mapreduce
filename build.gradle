@@ -7,19 +7,15 @@ sourceCompatibility = 1.7
 version = '1.0'
 
 repositories {
+    flatDir {
+        dirs 'libs'
+    }
     mavenCentral()
 }
 
 dependencies {
-    compile files('libs/AVIDemo.jar')
+    compile name: 'avi'
     compile 'org.apache.hadoop:hadoop-mapreduce-client-core:2.6.0'
     compile 'org.apache.hadoop:hadoop-common:2.6.0'
-    compile 'org.hsqldb:hsqldb:2.3.2'
     testCompile group: 'junit', name: 'junit', version: '4.11'
-}
-
-task fatJar(type: Jar) {
-    baseName = project.name + '-all'
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
 }

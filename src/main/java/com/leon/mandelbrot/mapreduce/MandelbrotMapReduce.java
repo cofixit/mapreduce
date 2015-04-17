@@ -297,8 +297,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                 LOG.info("Video creation finished in " + duration + " seconds");
             }
         } finally {
-            fs.delete(inDir, true);
-            fs.delete(outDir, true);
+            fs.delete(tmpDir, true);
             LOG.info("Finished Calculation of Mandelbrot Animation");
         }
     }
