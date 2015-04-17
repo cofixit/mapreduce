@@ -101,7 +101,22 @@ public class Mandelbrot {
     }
 
     public BufferedImage getImage() {
-        return ImageCreator.create(this.img);
+        int height = this.img.length;
+        int width = this.img[0].length;
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        for (int i = 0; i < this.img.length; i++) {
+            Color[] row = this.img[i];
+            if (row.length != width) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            for (int j = 0; j < row.length; j++) {
+                Color c = row[j];
+                image.setRGB(j, i, c.getRGB());
+            }
+        }
+
+        return image;
     }
 
 }
