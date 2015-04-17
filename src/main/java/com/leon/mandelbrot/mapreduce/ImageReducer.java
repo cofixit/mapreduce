@@ -1,5 +1,7 @@
 package com.leon.mandelbrot.mapreduce;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -11,6 +13,8 @@ import java.io.IOException;
 
 public class ImageReducer extends
         Reducer<IntWritable, KeyValueWritable, IntWritable, BytesWritable> {
+
+    private static final Log LOG = LogFactory.getLog(MandelbrotMapReduce.class);
 
     private int height;
     private int width;
@@ -46,5 +50,7 @@ public class ImageReducer extends
 
         // write byte array together with frames into context
         context.write(frame, new BytesWritable(bytes));
+        context.setStatus("Calculated frame #" + frame.get());
+        LOG.info("Reduced frame #" + frame.get());
     }
 }

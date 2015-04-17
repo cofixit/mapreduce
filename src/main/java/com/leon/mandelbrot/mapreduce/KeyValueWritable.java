@@ -3,7 +3,6 @@ package com.leon.mandelbrot.mapreduce;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.io.WritableFactories;
 
 import java.io.DataInput;
 import java.io.DataOutput;

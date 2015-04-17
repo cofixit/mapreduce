@@ -1,5 +1,7 @@
 package com.leon.mandelbrot.mapreduce;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -11,6 +13,8 @@ import java.io.IOException;
 
 public class MandelbrotMapper
         extends Mapper<LongWritable, LongWritable, IntWritable, KeyValueWritable> {
+
+    private static final Log LOG = LogFactory.getLog(MandelbrotMapReduce.class);
 
     private int height;
     private int width;
@@ -51,7 +55,9 @@ public class MandelbrotMapper
                        LongWritable size,
                        Context context)
             throws IOException, InterruptedException {
-        context.setStatus("Calculating combined rows " + offset.get() + " to " + (offset.get()+size.get()));
+        LOG.info("Calculating combined rows " + offset.get() + " to " + (offset.get()+size.get()));
+        long statusSize = size.get() / 100;
+        int percentageIterator = 0;
         for (long i = 0; i < size.get(); i++) {
             long combinedRow = offset.get() + i;
             long longFrame = combinedRow / this.height;
@@ -59,8 +65,9 @@ public class MandelbrotMapper
             IntWritable frame = new IntWritable((int)longFrame);
             IntWritable row = new IntWritable((int)longRow);
             calculateRow(frame, row, context);
-            if (i % 500 == 0) {
-                context.setStatus("Ran " + i + " iterations (offset: " + offset.get() + ")");
+            if (i > 0L && i%statusSize == 0) {
+                context.setStatus(++percentageIterator + "% done. ");
+                context.progress();
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.leon.mandelbrot.mapreduce;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
@@ -65,6 +67,7 @@ import static org.monte.media.VideoFormatKeys.*;
 public class MandelbrotMapReduce extends Configured implements Tool{
 
     private static final String TMP_DIR_PREFIX = MandelbrotMapReduce.class.getSimpleName();
+    private static final Log LOG = LogFactory.getLog(MandelbrotMapReduce.class);
 
     /**
      * Run a map/reduce job and create an animation out of the generated images with given parameters.
@@ -141,6 +144,19 @@ public class MandelbrotMapReduce extends Configured implements Tool{
         int height = conf.getInt(MandelbrotProperties.HEIGHT, MandelbrotProperties.STANDARD_HEIGHT);
         int frames = conf.getInt(MandelbrotProperties.FRAMES, MandelbrotProperties.STANDARD_FRAMES);
 
+        LOG.info("Starting Calculation of Mandelbrot Animation");
+        LOG.info("Number of Maps                " + nMaps);
+        LOG.info("Width:                        " + width);
+        LOG.info("Height:                       " + height);
+        LOG.info("Frames:                       " + frames);
+        LOG.info("Maximum Iterations:           " + conf.getInt(MandelbrotProperties.MAX_ITERATIONS, MandelbrotProperties.STANDARD_MAX_ITERATIONS));
+        LOG.info("Scale of First Frame:         " + conf.getDouble(MandelbrotProperties.FIRST_SCALE, MandelbrotProperties.STANDARD_FIRST_SCALE));
+        LOG.info("x-Translation of First Frame: " + conf.getDouble(MandelbrotProperties.FIRST_TRANSLATE_X, MandelbrotProperties.STANDARD_FIRST_TRANSLATE_X));
+        LOG.info("y-Translation of First Frame: " + conf.getDouble(MandelbrotProperties.FIRST_TRANSLATE_Y, MandelbrotProperties.STANDARD_FIRST_TRANSLATE_Y));
+        LOG.info("Scale of Last Frame:          " + conf.getDouble(MandelbrotProperties.LAST_SCALE, MandelbrotProperties.STANDARD_LAST_SCALE));
+        LOG.info("x-Translation of Last Frame:  " + conf.getDouble(MandelbrotProperties.LAST_TRANSLATE_X, MandelbrotProperties.STANDARD_LAST_TRANSLATE_X));
+        LOG.info("y-Translation of Last Frame:  " + conf.getDouble(MandelbrotProperties.LAST_TRANSLATE_Y, MandelbrotProperties.STANDARD_LAST_TRANSLATE_Y));
+
         Job job = Job.getInstance(conf);
 
         // Set up Job configuration
@@ -199,7 +215,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                     if (useExtraMapper) {
                         size.set(unassignedRows);
                     } else {
-                        size.set(unassignedRows+rowsPerMapper);
+                        size.set(unassignedRows +rowsPerMapper);
                     }
                 }
                 try (SequenceFile.Writer writer = SequenceFile.createWriter(
@@ -214,13 +230,14 @@ public class MandelbrotMapReduce extends Configured implements Tool{
             }
 
             // start a map/reduce job
-            System.out.println("Starting job");
-            final long startTime = System.currentTimeMillis();
+            LOG.info("Starting MapReduce Job");
+            long startTime = System.currentTimeMillis();
             job.waitForCompletion(true);
-            final double duration = (System.currentTimeMillis() - startTime) / 1000.0;
-            System.out.println("Job Finished in " + duration + " seconds");
+            double duration = (System.currentTimeMillis() - startTime) / 1000.0;
+            LOG.info("MapReduce Job Finished in " + duration + " seconds");
 
-
+            LOG.info("Starting to create video");
+            startTime = System.currentTimeMillis();
             // read outputs and write them into a video
             AVIWriter out = null;
             Format format = new Format(
@@ -242,6 +259,7 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                 if (fs.exists(video)) {
                     throw new IOException("Too many mandelbrot videos!");
                 }
+                LOG.info("Video is saved as " + video.getName());
                 OutputStream os = video.getFileSystem(conf).create(video);
                 ImageOutputStream ios = ImageIO.createImageOutputStream(os);
                 out = new AVIWriter(ios);
@@ -267,15 +285,21 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                             }
                         }
                     }
+                    if (i%1000 == 0) {
+                        LOG.info(i/10 + "% done.");
+                    }
                 }
             } finally {
                 if (out != null) {
                     out.close();
                 }
+                duration = (System.currentTimeMillis() - startTime) / 1000.0;
+                LOG.info("Video creation finished in " + duration + " seconds");
             }
         } finally {
             fs.delete(inDir, true);
             fs.delete(outDir, true);
+            LOG.info("Finished Calculation of Mandelbrot Animation");
         }
     }
 
@@ -337,28 +361,14 @@ public class MandelbrotMapReduce extends Configured implements Tool{
         final Path tmpDir = new Path(TMP_DIR_PREFIX + "_" + now + "_" + rand);
 
         if (args.length == 1) {
-            System.out.println("Number of Maps: " + nMaps);
             createMandelbrotAnimation(nMaps, tmpDir, getConf());
         } else {
-            System.out.println("Number of Maps:               " + nMaps);
-            System.out.println("Width:                        " + width);
-            System.out.println("Height:                       " + height);
-            System.out.println("Frames:                       " + frames);
-            System.out.println("Maximum Iterations:           " + maxIterations);
-            System.out.println("Scale of First Frame:         " + firstScale);
-            System.out.println("x-Translation of First Frame: " + firstTranslateX);
-            System.out.println("y-Translation of First Frame: " + firstTranslateY);
-            System.out.println("Scale of Last Frame:          " + lastScale);
-            System.out.println("x-Translation of Last Frame:  " + lastTranslateX);
-            System.out.println("y-Translation of Last Frame:  " + lastTranslateY);
-
             createMandelbrotAnimation(
                     nMaps, width, height, frames, maxIterations,
                     firstScale, firstTranslateX, firstTranslateY,
                     lastScale, lastTranslateX, lastTranslateY,
                     tmpDir, getConf());
         }
-
         return 0;
     }
 

@@ -1,8 +1,6 @@
 package com.leon.mandelbrot;
 
 import org.monte.media.Format;
-import org.monte.media.FormatKeys;
-import org.monte.media.VideoFormatKeys;
 import org.monte.media.avi.AVIWriter;
 import org.monte.media.math.Rational;
 import static org.monte.media.VideoFormatKeys.*;
@@ -54,7 +52,9 @@ public class MandelbrotAnimation {
                     out.write(0, img, 1);
                 }
             } finally {
-                out.close();
+                if (out != null) {
+                    out.close();
+                }
                 long end = System.currentTimeMillis();
                 long time = end-start;
                 System.out.println("Video creation done. Calculation time: " + (time / 1000.0) + "s");

@@ -16,7 +16,7 @@ public class Launcher {
             ImageIO.write(img, "png", new File("mandelbrot.png"));
         } catch (IOException e) {
             e.printStackTrace();
-        };
+        }
     }
 
 }
