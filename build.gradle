@@ -8,20 +8,23 @@ repositories {
 }
 
 dependencies {
+    compile files('libs/AVIDemo.jar')
     compile 'org.apache.hadoop:hadoop-mapreduce-client-core:2.6.0'
     compile 'org.apache.hadoop:hadoop-common:2.6.0'
     compile 'org.hsqldb:hsqldb:2.3.2'
-    compile files('libs/AVIDemo.jar')
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
 
 task copyJarToLib(type: Copy) {
-    into "build/libs/lib"
+    into "build/tmp/jar/lib"
     from "libs"
 }
 
 jar {
     dependsOn copyJarToLib
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
 }
 
 task hadoop(type: Exec) {
