@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage;
 
 public class Mandelbrot {
 
-    protected static final int MAX_ITERATIONS = 150;
+    protected static final int MAX_ITERATIONS = 250;
 
 
     protected Color[][] img;
@@ -39,11 +39,11 @@ public class Mandelbrot {
     }
 
     public void create() {
-        System.out.println("Staring calculation of the Mandelbrot set...");
+//        System.out.println("Staring calculation of the Mandelbrot set...");
         long start = System.currentTimeMillis();
         for (int i = 0; i < this.img.length; i++) {
             if (i%100 == 0) {
-                System.out.println((100*i/this.img.length) + "% done.");
+//                System.out.println((100*i/this.img.length) + "% done.");
             }
             for (int j = 0; j < this.img[i].length; j++) {
                 int iterations = this.getIterations(j, i);
@@ -51,9 +51,9 @@ public class Mandelbrot {
             }
         }
         long end = System.currentTimeMillis();
-        System.out.println("100% Done. Calculated a " + width + "x" + height + " image.");
+//        System.out.println("100% Done. Calculated a " + width + "x" + height + " image.");
         long time = end-start;
-        System.out.println("Calculation time: " + (time/1000.0) + "s");
+//        System.out.println("Calculation time: " + (time/1000.0) + "s");
     }
 
     private int getIterations(

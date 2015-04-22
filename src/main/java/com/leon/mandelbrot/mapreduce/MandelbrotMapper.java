@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 
 import java.awt.*;
 import java.io.IOException;
+import java.util.HashMap;
 
 public class MandelbrotMapper
         extends Mapper<LongWritable, LongWritable, IntWritable, KeyValueWritable> {
@@ -28,6 +29,10 @@ public class MandelbrotMapper
     private double lastTranslateY;
 
     private int maxIterations;
+
+    private HashMap<Integer, Double> scales;
+    private HashMap<Integer, Double> xTranslations;
+    private HashMap<Integer, Double> yTranslations;
 
     /**
      * Get the configuration parameters for calculating the images:
@@ -48,6 +53,10 @@ public class MandelbrotMapper
         this.lastScale = configuration.getDouble(MandelbrotProperties.LAST_SCALE, MandelbrotProperties.STANDARD_LAST_SCALE);
         this.lastTranslateX = configuration.getDouble(MandelbrotProperties.LAST_TRANSLATE_X, MandelbrotProperties.STANDARD_LAST_TRANSLATE_X);
         this.lastTranslateY = configuration.getDouble(MandelbrotProperties.LAST_TRANSLATE_Y, MandelbrotProperties.STANDARD_LAST_TRANSLATE_Y);
+
+        this.scales = new HashMap<>();
+        this.xTranslations = new HashMap<>();
+        this.yTranslations = new HashMap<>();
     }
 
     @Override
@@ -78,10 +87,27 @@ public class MandelbrotMapper
             throws IOException, InterruptedException {
         // calculate the coordinates for the pixels that shall be rendered
         double relativeFrame = (double) frame.get() / (double) this.frames;
-        double scaleX = this.firstScale + (this.lastScale - this.firstScale) * relativeFrame;
+
+        // save the scale / tx / ty in a hash map
+        Double scaleX = this.scales.get(frame.get());
+        if (scaleX == null) {
+            scaleX = Math.pow(
+                    10,
+                    Math.log(this.lastScale / this.firstScale) / (this.frames - 1)
+            );
+        }
+
+        Double translateX = this.xTranslations.get(frame.get());
+        if (translateX == null) {
+            translateX = this.firstTranslateX + (this.lastTranslateX - this.firstTranslateX) * relativeFrame;
+        }
+
+        Double translateY = this.yTranslations.get(frame.get());
+        if (translateY == null) {
+            translateY = this.firstTranslateY + (this.lastTranslateY - this.firstTranslateY) * relativeFrame;
+        }
+
         double scaleY = scaleX * this.height / this.width;
-        double translateX = this.firstTranslateX + (this.lastTranslateX - this.firstTranslateX) * relativeFrame;
-        double translateY = this.firstTranslateY + (this.lastTranslateY - this.firstTranslateY) * relativeFrame;
 
         // calculate the y coordinate for the corresponding row
         double y0 = scaleY/2 - (row.get()*scaleY)/this.height + translateY;

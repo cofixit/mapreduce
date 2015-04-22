@@ -45,7 +45,6 @@
     <orderEntry type="library" exported="" name="Gradle: javax.activation:activation:1.1" level="project" />
     <orderEntry type="library" exported="" name="Gradle: :avi:" level="project" />
     <orderEntry type="library" exported="" name="Gradle: org.apache.hadoop:hadoop-common:2.6.0" level="project" />
-    <orderEntry type="library" exported="" name="Gradle: org.apache.commons:commons-math3:3.1.1" level="project" />
     <orderEntry type="library" exported="" name="Gradle: xmlenc:xmlenc:0.52" level="project" />
     <orderEntry type="library" exported="" name="Gradle: commons-httpclient:commons-httpclient:3.1" level="project" />
     <orderEntry type="library" exported="" name="Gradle: commons-net:commons-net:3.1" level="project" />
@@ -92,5 +91,6 @@
     <orderEntry type="library" exported="" name="Gradle: javax.inject:javax.inject:1" level="project" />
     <orderEntry type="library" exported="" name="Gradle: aopalliance:aopalliance:1.0" level="project" />
     <orderEntry type="library" exported="" name="Gradle: org.sonatype.sisu.inject:cglib:2.2.1-v20090111" level="project" />
+    <orderEntry type="library" exported="" name="Gradle: org.apache.commons:commons-math3:3.1.1" level="project" />
   </component>
 </module>

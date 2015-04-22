@@ -285,8 +285,8 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                             }
                         }
                     }
-                    if (i%1000 == 0) {
-                        LOG.info(i/10 + "% done.");
+                    if (i%20 == 0) {
+                        LOG.info(i*5 + "% done.");
                     }
                 }
             } finally {
