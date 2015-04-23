@@ -14,26 +14,17 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.monte.media.Format;
-import org.monte.media.FormatKeys;
-import org.monte.media.avi.AVIWriter;
-import org.monte.media.math.Rational;
+import org.jcodec.codecs.h264.H264Encoder;
+import org.jcodec.common.model.ColorSpace;
+import org.jcodec.common.model.Picture;
+import org.jcodec.scale.AWTUtil;
+import org.jcodec.scale.RgbToYuv420;
 
 import javax.imageio.ImageIO;
-import javax.imageio.stream.ImageOutputStream;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.Random;
-
-import static org.monte.media.FormatKeys.EncodingKey;
-import static org.monte.media.FormatKeys.FrameRateKey;
-import static org.monte.media.FormatKeys.MediaTypeKey;
-import static org.monte.media.VideoFormatKeys.*;
-
 /**
  * A map/reduce program that creates an animation of the mandelbrot set.
  * Given input parameters:
@@ -239,18 +230,21 @@ public class MandelbrotMapReduce extends Configured implements Tool{
             LOG.info("Starting to create video");
             startTime = System.currentTimeMillis();
             // read outputs and write them into a video
-            AVIWriter out = null;
-            Format format = new Format(
-                    EncodingKey, ENCODING_AVI_PNG,
-                    DepthKey, 24,
-                    MediaTypeKey, FormatKeys.MediaType.VIDEO,
-                    FrameRateKey, new Rational(30, 1),
-                    WidthKey, width,
-                    HeightKey, height
-            );
+//            AVIWriter out = null;
+//            Format format = new Format(
+//                    EncodingKey, ENCODING_AVI_PNG,
+//                    DepthKey, 24,
+//                    MediaTypeKey, FormatKeys.MediaType.VIDEO,
+//                    FrameRateKey, new Rational(30, 1),
+//                    WidthKey, width,
+//                    HeightKey, height
+//            );
+
+            OutputStream os = null;
+
             try {
                 // set up video
-                Path video = new Path(resultDir, "mandelbrot.avi");
+                Path video = new Path(resultDir, "mandelbrot.mp4");
                 int pathTries = 0;
                 while (fs.exists(video) && pathTries < 100) {
                     video = new Path(resultDir, "mandelbrot" + pathTries + ".avi");
@@ -260,11 +254,10 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                     throw new IOException("Too many mandelbrot videos!");
                 }
                 LOG.info("Video is saved as " + video.getName());
-                OutputStream os = video.getFileSystem(conf).create(video);
-                ImageOutputStream ios = ImageIO.createImageOutputStream(os);
-                out = new AVIWriter(ios);
-                out.addTrack(format);
-                out.setPalette(0, ColorModel.getRGBdefault());
+                os = video.getFileSystem(conf).create(video);
+
+                H264Encoder encoder = new H264Encoder();
+                RgbToYuv420 transform = new RgbToYuv420(0, 0);
 
                 for (int i = 0; i < frames; i++) {
                     Path inFile = new Path(outDir, String.format("part-r-%05d", i));
@@ -276,8 +269,14 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                         int readerIteration = 0;
                         while (reader.next(frame, image)) {
                             InputStream in = new ByteArrayInputStream(image.copyBytes());
-                            BufferedImage img = ImageIO.read(in);
-                            out.write(0, img, 1);
+                            BufferedImage rgb = ImageIO.read(in);
+                            Picture yuv = Picture.create(width, height, ColorSpace.YUV420);
+                            transform.transform(AWTUtil.fromBufferedImage(rgb), yuv);
+                            ByteBuffer buf = ByteBuffer.allocate(rgb.getWidth() * rgb.getHeight() * 3);
+
+                            ByteBuffer ff = encoder.encodeFrame(buf, yuv);
+
+                            os.write(ff.array());
                             readerIteration++;
                             if (readerIteration > 1) {
                                 System.err.println("Somehow more than one frame came up in one sequence file...");
@@ -290,8 +289,8 @@ public class MandelbrotMapReduce extends Configured implements Tool{
                     }
                 }
             } finally {
-                if (out != null) {
-                    out.close();
+                if (os != null) {
+                    os.close();
                 }
                 duration = (System.currentTimeMillis() - startTime) / 1000.0;
                 LOG.info("Video creation finished in " + duration + " seconds");
