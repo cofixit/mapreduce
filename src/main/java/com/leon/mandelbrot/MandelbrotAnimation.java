@@ -1,8 +1,16 @@
 package com.leon.mandelbrot;
 
 import org.jcodec.codecs.h264.H264Encoder;
+import org.jcodec.codecs.h264.H264Utils;
+import org.jcodec.common.NIOUtils;
+import org.jcodec.common.SeekableByteChannel;
 import org.jcodec.common.model.ColorSpace;
 import org.jcodec.common.model.Picture;
+import org.jcodec.containers.mp4.Brand;
+import org.jcodec.containers.mp4.MP4Packet;
+import org.jcodec.containers.mp4.TrackType;
+import org.jcodec.containers.mp4.muxer.FramesMP4MuxerTrack;
+import org.jcodec.containers.mp4.muxer.MP4Muxer;
 import org.jcodec.scale.AWTUtil;
 import org.jcodec.scale.RgbToYuv420;
 
@@ -12,6 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 
 
 public class MandelbrotAnimation {
@@ -29,12 +38,22 @@ public class MandelbrotAnimation {
         double lastTranslateX = -0.1637007;
         double lastTranslateY = -1.0259398;
 
-        FileChannel sink = null;
+        SeekableByteChannel ch = null;
         long start = System.currentTimeMillis();
 
         try {
-            sink = new FileOutputStream(new File("mandelbrot.mp4")).getChannel();
+            ch = NIOUtils.writableFileChannel(new File("mandelbrot.mp4"));
+
+            MP4Muxer muxer = new MP4Muxer(ch, Brand.MP4);
+            FramesMP4MuxerTrack outTrack = muxer.addTrackForCompressed(TrackType.VIDEO, 25);
+            ByteBuffer out = ByteBuffer.allocate(width * height * 6);
+
             H264Encoder encoder = new H264Encoder();
+
+            ArrayList<ByteBuffer> spsList = new ArrayList<>();
+            ArrayList<ByteBuffer> ppsList = new ArrayList<>();
+
+            Picture toEncode = Picture.create(width, height, ColorSpace.YUV420);
             RgbToYuv420 transform = new RgbToYuv420(0, 0);
 
             double s = firstScale;
@@ -50,27 +69,42 @@ public class MandelbrotAnimation {
                 Mandelbrot m = new Mandelbrot(width, height, s, tx, ty);
                 m.create();
                 BufferedImage rgb = m.getImage();
-                Picture yuv = Picture.create(rgb.getWidth(), rgb.getHeight(), ColorSpace.YUV420);
-                transform.transform(AWTUtil.fromBufferedImage(rgb), yuv);
-                ByteBuffer buf = ByteBuffer.allocate(rgb.getWidth() * rgb.getHeight() * 3);
 
-                ByteBuffer ff = encoder.encodeFrame(buf, yuv);
-                sink.write(ff);
+                Picture pic = AWTUtil.fromBufferedImage(rgb);
+
+                transform.transform(pic, toEncode);
+
+                out.clear();
+                ByteBuffer result = encoder.encodeFrame(out, toEncode);
+
+                spsList.clear();
+                ppsList.clear();
+                H264Utils.encodeMOVPacket(result, spsList, ppsList);
+
+                outTrack.addFrame(
+                        new MP4Packet(
+                                result,
+                                i,
+                                25,
+                                1,
+                                i,
+                                true,
+                                null,
+                                i,
+                                0));
 
                 s *= sFactor;
                 tx += txInc;
                 ty += tyInc;
             }
 
+            outTrack.addSampleEntry(H264Utils.createMOVSampleEntry(spsList, ppsList));
+            muxer.writeHeader();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (sink != null) {
-                try {
-                    sink.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            if (ch != null) {
+                NIOUtils.closeQuietly(ch);
             }
         }
 

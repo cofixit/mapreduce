@@ -12,6 +12,11 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.HashMap;
 
+/**
+ * This is the Mapper class. Its task is to calculate the colors of the pixels of a mandelbrot picture and save them
+ * in a list of Key/Value pairs. The Structure is &lt;frame: &lt;row: pixels&gt;&gt;.
+ * For further information take a look at the following method: <pre>MandelbrotMapper.map()</pre>
+ */
 public class MandelbrotMapper
         extends Mapper<LongWritable, LongWritable, IntWritable, KeyValueWritable> {
 
@@ -35,7 +40,7 @@ public class MandelbrotMapper
     private HashMap<Integer, Double> yTranslations;
 
     /**
-     * Get the configuration parameters for calculating the images:
+     * Get the configuration parameters for calculating the video frames. Also set up the three hash maps.
      * @throws IOException
      * @throws InterruptedException
      */
@@ -59,15 +64,23 @@ public class MandelbrotMapper
         this.yTranslations = new HashMap<>();
     }
 
+    /**
+     * Calculates the given rows that are to be calculated.
+     * @param offset The offset in frames*rows.
+     * @param rows The amount of rows to calculate in frames*rows.
+     * @param context The context.
+     * @throws IOException
+     * @throws InterruptedException
+     */
     @Override
     protected void map(LongWritable offset,
-                       LongWritable size,
+                       LongWritable rows,
                        Context context)
             throws IOException, InterruptedException {
-        LOG.info("Calculating combined rows " + offset.get() + " to " + (offset.get()+size.get()));
-        long statusSize = size.get() / 100;
+        LOG.info("Calculating combined rows " + offset.get() + " to " + (offset.get()+rows.get()));
+        long statusSize = rows.get() / 100;
         int percentageIterator = 0;
-        for (long i = 0; i < size.get(); i++) {
+        for (long i = 0; i < rows.get(); i++) {
             long combinedRow = offset.get() + i;
             long longFrame = combinedRow / this.height;
             long longRow = combinedRow % this.height;
@@ -86,25 +99,32 @@ public class MandelbrotMapper
                                 Context context)
             throws IOException, InterruptedException {
         // calculate the coordinates for the pixels that shall be rendered
-        double relativeFrame = (double) frame.get() / (double) this.frames;
+        int theFrame = frame.get();
+        double relativeFrame = (double) theFrame / (double) this.frames;
 
         // save the scale / tx / ty in a hash map
-        Double scaleX = this.scales.get(frame.get());
+        Double scaleX = this.scales.get(theFrame);
         if (scaleX == null) {
-            scaleX = Math.pow(
-                    10,
-                    Math.log(this.lastScale / this.firstScale) / (this.frames - 1)
+            scaleX = this.firstScale * Math.pow(
+                    Math.pow(
+                        10,
+                        Math.log10(this.lastScale / this.firstScale) / (this.frames - 1)
+                    ),
+                    theFrame
             );
+            this.scales.put(theFrame, scaleX);
         }
 
-        Double translateX = this.xTranslations.get(frame.get());
+        Double translateX = this.xTranslations.get(theFrame);
         if (translateX == null) {
             translateX = this.firstTranslateX + (this.lastTranslateX - this.firstTranslateX) * relativeFrame;
+            this.xTranslations.put(theFrame, translateX);
         }
 
-        Double translateY = this.yTranslations.get(frame.get());
+        Double translateY = this.yTranslations.get(theFrame);
         if (translateY == null) {
             translateY = this.firstTranslateY + (this.lastTranslateY - this.firstTranslateY) * relativeFrame;
+            this.yTranslations.put(theFrame, translateY);
         }
 
         double scaleY = scaleX * this.height / this.width;

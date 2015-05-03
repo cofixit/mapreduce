@@ -15,8 +15,16 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.jcodec.codecs.h264.H264Encoder;
+import org.jcodec.codecs.h264.H264Utils;
+import org.jcodec.common.NIOUtils;
+import org.jcodec.common.SeekableByteChannel;
 import org.jcodec.common.model.ColorSpace;
 import org.jcodec.common.model.Picture;
+import org.jcodec.containers.mp4.Brand;
+import org.jcodec.containers.mp4.MP4Packet;
+import org.jcodec.containers.mp4.TrackType;
+import org.jcodec.containers.mp4.muxer.FramesMP4MuxerTrack;
+import org.jcodec.containers.mp4.muxer.MP4Muxer;
 import org.jcodec.scale.AWTUtil;
 import org.jcodec.scale.RgbToYuv420;
 
@@ -24,6 +32,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Random;
 /**
  * A map/reduce program that creates an animation of the mandelbrot set.
@@ -229,72 +238,89 @@ public class MandelbrotMapReduce extends Configured implements Tool{
 
             LOG.info("Starting to create video");
             startTime = System.currentTimeMillis();
-            // read outputs and write them into a video
-//            AVIWriter out = null;
-//            Format format = new Format(
-//                    EncodingKey, ENCODING_AVI_PNG,
-//                    DepthKey, 24,
-//                    MediaTypeKey, FormatKeys.MediaType.VIDEO,
-//                    FrameRateKey, new Rational(30, 1),
-//                    WidthKey, width,
-//                    HeightKey, height
-//            );
 
-            OutputStream os = null;
+            File video = new File("mandelbrot.mp4");
+            int fileTries = 0;
+            while (video.exists() && fileTries < 100) {
+                video = new File("mandelbrot" + fileTries + ".mp4");
+                fileTries++;
+            }
+            if (video.exists()) {
+                throw new IOException("Too many mandelbrot videos!");
+            }
+            LOG.info("Video saved in " + video.getName());
 
-            try {
-                // set up video
-                Path video = new Path(resultDir, "mandelbrot.mp4");
-                int pathTries = 0;
-                while (fs.exists(video) && pathTries < 100) {
-                    video = new Path(resultDir, "mandelbrot" + pathTries + ".avi");
-                    pathTries++;
-                }
-                if (fs.exists(video)) {
-                    throw new IOException("Too many mandelbrot videos!");
-                }
-                LOG.info("Video is saved as " + video.getName());
-                os = video.getFileSystem(conf).create(video);
+            SeekableByteChannel ch = NIOUtils.writableFileChannel(video);
 
-                H264Encoder encoder = new H264Encoder();
-                RgbToYuv420 transform = new RgbToYuv420(0, 0);
+            MP4Muxer muxer = new MP4Muxer(ch, Brand.MP4);
+            FramesMP4MuxerTrack outTrack = muxer.addTrackForCompressed(TrackType.VIDEO, 25);
+            ByteBuffer out = ByteBuffer.allocate(width * height * 6);
 
-                for (int i = 0; i < frames; i++) {
-                    Path inFile = new Path(outDir, String.format("part-r-%05d", i));
-                    IntWritable frame = new IntWritable();
-                    BytesWritable image = new BytesWritable();
-                    try (SequenceFile.Reader reader = new SequenceFile.Reader(
-                            conf,
-                            SequenceFile.Reader.file(inFile))) {
-                        int readerIteration = 0;
-                        while (reader.next(frame, image)) {
-                            InputStream in = new ByteArrayInputStream(image.copyBytes());
-                            BufferedImage rgb = ImageIO.read(in);
-                            Picture yuv = Picture.create(width, height, ColorSpace.YUV420);
-                            transform.transform(AWTUtil.fromBufferedImage(rgb), yuv);
-                            ByteBuffer buf = ByteBuffer.allocate(rgb.getWidth() * rgb.getHeight() * 3);
+            H264Encoder encoder = new H264Encoder();
 
-                            ByteBuffer ff = encoder.encodeFrame(buf, yuv);
+            ArrayList<ByteBuffer> spsList = new ArrayList<>();
+            ArrayList<ByteBuffer> ppsList = new ArrayList<>();
 
-                            os.write(ff.array());
-                            readerIteration++;
-                            if (readerIteration > 1) {
-                                System.err.println("Somehow more than one frame came up in one sequence file...");
-                                System.err.println("File: " + inFile.getName());
-                            }
+            Picture toEncode = Picture.create(width, height, ColorSpace.YUV420);
+            RgbToYuv420 transform = new RgbToYuv420(0, 0);
+
+            LOG.info("Preparation done. Iterating through frames...");
+
+            for (int i = 0; i < frames; i++) {
+                Path inFile = new Path(outDir, String.format("part-r-%05d", i));
+                IntWritable frame = new IntWritable();
+                BytesWritable image = new BytesWritable();
+
+                try (SequenceFile.Reader reader = new SequenceFile.Reader(
+                        conf,
+                        SequenceFile.Reader.file(inFile))) {
+                    int readerIteration = 0;
+                    while (reader.next(frame, image)) {
+                        InputStream in = new ByteArrayInputStream(image.copyBytes());
+                        BufferedImage rgb = ImageIO.read(in);
+                        Picture pic = AWTUtil.fromBufferedImage(rgb);
+                        transform.transform(pic, toEncode);
+
+                        out.clear();
+                        ByteBuffer result = encoder.encodeFrame(out, toEncode);
+
+                        spsList.clear();
+                        ppsList.clear();
+                        H264Utils.encodeMOVPacket(result, spsList, ppsList);
+
+                        outTrack.addFrame(
+                                new MP4Packet(
+                                        result,
+                                        i,
+                                        25,
+                                        1,
+                                        i,
+                                        true,
+                                        null,
+                                        i,
+                                        0
+                                )
+                        );
+
+                        readerIteration++;
+                        if (readerIteration > 1) {
+                            System.err.println("Somehow more than one frame came up in one sequence file...");
+                            System.err.println("File: " + inFile.getName());
                         }
                     }
-                    if (i%20 == 0) {
-                        LOG.info(i*5 + "% done.");
-                    }
                 }
-            } finally {
-                if (os != null) {
-                    os.close();
+                if (i % 20 == 0) {
+                    LOG.info("Frame #" + i + " written into video.");
                 }
-                duration = (System.currentTimeMillis() - startTime) / 1000.0;
-                LOG.info("Video creation finished in " + duration + " seconds");
             }
+
+            outTrack.addSampleEntry(H264Utils.createMOVSampleEntry(spsList, ppsList));
+            muxer.writeHeader();
+
+            NIOUtils.closeQuietly(ch);
+
+            duration = (System.currentTimeMillis() - startTime) / 1000.0;
+            LOG.info("Video creation finished in " + duration + " seconds");
         } finally {
             fs.delete(tmpDir, true);
             LOG.info("Finished Calculation of Mandelbrot Animation");
