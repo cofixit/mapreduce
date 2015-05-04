@@ -1,13 +1,13 @@
 <project>
 
     <target name="clean">
-        <exec executable="../../gradlew" dir="../../">
+        <exec executable="./gradlew" dir="../../">
             <arg value="clean"/>
         </exec>
     </target>
 
     <target name="build">
-        <exec executable="../../gradlew" dir="../../">
+        <exec executable="./gradlew" dir="../../">
             <arg value="build"/>
         </exec>
     </target>
