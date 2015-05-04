@@ -13,6 +13,6 @@ public class ListJobs extends HttpServlet {
         response.setContentType("text/json");
         response.setStatus(HttpServletResponse.SC_OK);
 
-        response.getWriter().println(JobList.getInstance().toString());
+        response.getWriter().println("{\"jobs\": " + JobQueue.getInstance().toString() + "}");
     }
 }

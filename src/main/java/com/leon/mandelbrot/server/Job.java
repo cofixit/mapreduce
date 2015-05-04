@@ -2,13 +2,36 @@ package com.leon.mandelbrot.server;
 
 import com.leon.mandelbrot.mapreduce.MapReduce;
 import com.leon.mandelbrot.mapreduce.MapReduceMocker;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.util.ToolRunner;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 public class Job implements Runnable {
 
+    enum Status {
+        WAITING ("waiting"),
+        RUNNING ("running"),
+        FAILED  ("failed"),
+        DONE    ("done");
+
+        private String value;
+
+        Status(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return this.value;
+        }
+    }
+
     private static final String N_MAPS = "12";
+    private static final Log LOG = LogFactory.getLog(Job.class);
 
     private String width;
     private String height;
@@ -22,11 +45,12 @@ public class Job implements Runnable {
     private String lastTranslateX;
     private String lastTranslateY;
     
+    private Date created;
     private Date started;
     private Date finished;
-    
-    private boolean done;
-    private boolean success;
+
+    private Status status;
+
     private int id;
 
     public Job(String width,
@@ -39,8 +63,8 @@ public class Job implements Runnable {
                String lastScale,
                String lastTranslateX,
                String lastTranslateY) {
-        this.started = new Date();
-        this.done = false;
+        this.created = new Date();
+        this.status = Status.WAITING;
         this.width = width;
         this.height = height;
         this.frames = frames;
@@ -51,10 +75,15 @@ public class Job implements Runnable {
         this.lastScale = lastScale;
         this.lastTranslateX = lastTranslateX;
         this.lastTranslateY = lastTranslateY;
+        LOG.info("Job #" + id + " " + status);
     }
 
-    public boolean getDone() {
-        return done;
+    public String getStatus() {
+        return status.value;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
     }
 
     public String getWidth() {
@@ -139,6 +168,10 @@ public class Job implements Runnable {
 
     @Override
     public void run() {
+        status = Status.RUNNING;
+        LOG.info("Job #" + id + " " + status);
+        started = new Date();
+
         String[] args = new String[] {
                 N_MAPS,
                 width,
@@ -160,20 +193,26 @@ public class Job implements Runnable {
         } catch(Exception e) {
             e.printStackTrace();
         } finally {
-            success = result == 0;
-            done = true;
+            if (result == 0) {
+                status = Status.DONE;
+            } else {
+                status = Status.FAILED;
+            }
             finished = new Date();
+            LOG.info("Job #" + id + " " + status);
         }
     }
 
     @Override
     public String toString() {
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+
         return "{" +
                 "\"id\": " + id + ", " +
-                "\"done\": " + done + ", " +
-                "\"success\": " + success + ", " +
-                "\"started\": \"" + started + "\", " +
-                "\"finished\": \"" + finished + "\", " +
+                "\"status\": \"" + status + "\", " +
+                "\"created\": \"" + (created == null ? "" : sdf.format(created)) + "\", " +
+                "\"started\": \"" + (started == null ? "" : sdf.format(started)) + "\", " +
+                "\"finished\": \"" + (finished == null ? "" : sdf.format(finished)) + "\", " +
                 "\"width\": " + width + ", " +
                 "\"height\": " + height + ", " +
                 "\"frames\": " + frames + ", " +

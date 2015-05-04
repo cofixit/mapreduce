@@ -32,7 +32,7 @@ public class Main {
 
     public void rewriteRules() {
         servletHandler.addServletWithMapping(TestServlet.class,     "/testservlet");
-        servletHandler.addServletWithMapping(AddJob.class,        "/startJob");
+        servletHandler.addServletWithMapping(AddJob.class,          "/addJob");
         servletHandler.addServletWithMapping(ListJobs.class,        "/listJobs");
     }
 

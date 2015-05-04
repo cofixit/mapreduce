@@ -37,16 +37,12 @@ public class AddJob extends HttpServlet {
                 lastTranslateY
         );
         Thread jobThread = new Thread(job);
-        jobThread.start();
 
-        int id = JobList.getInstance().addJob(job);
+        int id = JobQueue.getInstance().addJob(job);
 
         response.setContentType("text/json");
         response.setStatus(HttpServletResponse.SC_OK);
 
         response.getWriter().println("{\"jobId\": " + id + "}");
-
-        Logger logger = Logger.getRootLogger();
-        logger.info("Called doGet (and created job with id" + id);
     }
 }
