@@ -1,0 +1,23 @@
+<project>
+
+    <target name="clean">
+        <exec executable="./gradlew">
+            <arg value="clean"/>
+        </exec>
+    </target>
+
+    <target name="build">
+        <exec executable="./gradlew">
+            <arg value="build"/>
+        </exec>
+    </target>
+
+    <target name="mandelbrot.single">
+        <java classname="com.leon.mandelbrot.standard.Mandelbrot">
+            <classpath>
+                <pathelement location="build/classes/main"/>
+            </classpath>
+        </java>
+    </target>
+
+</project>
