@@ -13,7 +13,15 @@
     </target>
 
     <target name="mandelbrot.single">
-        <java classname="com.leon.mandelbrot.standard.Mandelbrot" dir="../../">
+        <java classname="com.leon.mandelbrot.standard.Mandelbrot">
+            <classpath>
+                <pathelement location="../../build/classes/main"/>
+            </classpath>
+        </java>
+    </target>
+
+    <target name="mandelbrot.video">
+        <java classname="com.leon.mandelbrot.standard.MandelbrotAnimation">
             <classpath>
                 <pathelement location="../../build/classes/main"/>
             </classpath>
