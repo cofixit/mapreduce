@@ -233,7 +233,7 @@ public class MapReduce extends Configured implements Tool{
                     + getClass().getName()
                     + " <nMaps> [<width> <height> <frames> <maxIterations>" +
                     "<firstScale> <firstTranslateX> <firstTranslateY> " +
-                    "<lastScale> <lsatTranslateX> <latTranslateY>]\n");
+                    "<lastScale> <lastTranslateX> <lastTranslateY>]\n");
             ToolRunner.printGenericCommandUsage(System.err);
             return 2;
         }
