@@ -14,7 +14,7 @@ import java.io.IOException;
 public class ImageReducer extends
         Reducer<IntWritable, KeyValueWritable, IntWritable, BytesWritable> {
 
-    private static final Log LOG = LogFactory.getLog(MandelbrotMapReduce.class);
+    private static final Log LOG = LogFactory.getLog(MapReduce.class);
 
     private int height;
     private int width;

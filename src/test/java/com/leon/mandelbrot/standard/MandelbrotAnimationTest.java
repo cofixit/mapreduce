@@ -1,8 +1,7 @@
-package com.leon.mandelbrot;
+package com.leon.mandelbrot.standard;
 
+import com.leon.mandelbrot.standard.MandelbrotAnimation;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class MandelbrotAnimationTest {
 

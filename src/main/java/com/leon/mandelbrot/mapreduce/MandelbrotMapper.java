@@ -20,7 +20,7 @@ import java.util.HashMap;
 public class MandelbrotMapper
         extends Mapper<LongWritable, LongWritable, IntWritable, KeyValueWritable> {
 
-    private static final Log LOG = LogFactory.getLog(MandelbrotMapReduce.class);
+    private static final Log LOG = LogFactory.getLog(MapReduce.class);
 
     private int height;
     private int width;

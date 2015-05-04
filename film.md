@@ -19,6 +19,7 @@
 - x Formel (0'05")
 - x Interview Leon über Mandelbrot (2'00")
 - m Voiceover zu Mandelbrot (0'30")
+
 ## Outro
 - m Mandelbrot + Voiceover (0'15")
 - x Crazy Run (0'10")

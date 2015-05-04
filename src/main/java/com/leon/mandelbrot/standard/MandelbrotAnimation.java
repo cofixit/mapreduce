@@ -1,4 +1,4 @@
-package com.leon.mandelbrot;
+package com.leon.mandelbrot.standard;
 
 import org.jcodec.codecs.h264.H264Encoder;
 import org.jcodec.codecs.h264.H264Utils;
@@ -16,10 +16,8 @@ import org.jcodec.scale.RgbToYuv420;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
 
@@ -42,7 +40,10 @@ public class MandelbrotAnimation {
         long start = System.currentTimeMillis();
 
         try {
-            ch = NIOUtils.writableFileChannel(new File("mandelbrot.mp4"));
+            File dir = new File("mandelbrot_result/standard");
+            dir.mkdirs();
+            File f = new File("mandelbrot_result/standard/mandelbrot.mp4");
+            ch = NIOUtils.writableFileChannel(f);
 
             MP4Muxer muxer = new MP4Muxer(ch, Brand.MP4);
             FramesMP4MuxerTrack outTrack = muxer.addTrackForCompressed(TrackType.VIDEO, 25);

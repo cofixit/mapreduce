@@ -1,7 +1,10 @@
-package com.leon.mandelbrot;
+package com.leon.mandelbrot.standard;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 public class Mandelbrot {
 
@@ -119,4 +122,22 @@ public class Mandelbrot {
         return image;
     }
 
+    public static void main(String[] args) {
+        Mandelbrot m = new Mandelbrot(
+                1200,
+                800,
+                0.0000005,
+                -0.1637007,
+                -1.0259398);
+        m.create();
+        BufferedImage img = m.getImage();
+
+        try {
+            File f = new File("mandelbrot_result/standard/maneldbrot.png");
+            f.mkdirs();
+            ImageIO.write(img, "png", f);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
