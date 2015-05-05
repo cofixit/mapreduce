@@ -42,10 +42,10 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
-        Layout layout = new TTCCLayout("DATE");
-        BasicConfigurator.configure(new ConsoleAppender(layout, ConsoleAppender.SYSTEM_OUT));
-        Logger logger = Logger.getRootLogger();
-        logger.setLevel(Level.INFO);
+//        Layout layout = new TTCCLayout("DATE");
+//        BasicConfigurator.configure(new ConsoleAppender(layout, ConsoleAppender.SYSTEM_OUT));
+//        Logger logger = Logger.getRootLogger();
+//        logger.setLevel(Level.INFO);
         new Main(1337).start();
     }
 }

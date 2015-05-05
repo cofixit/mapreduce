@@ -89,6 +89,7 @@ public class MapReduce extends Configured implements Tool{
             double lastScale,
             double lastTranslateX,
             double lastTranslateY,
+            String fileName,
             Path tmpDir,
             Configuration conf
     ) throws IOException, ClassNotFoundException, InterruptedException {
@@ -103,6 +104,7 @@ public class MapReduce extends Configured implements Tool{
         conf.setDouble(MandelbrotProperties.LAST_SCALE, lastScale);
         conf.setDouble(MandelbrotProperties.LAST_TRANSLATE_X, lastTranslateX);
         conf.setDouble(MandelbrotProperties.LAST_TRANSLATE_Y, lastTranslateY);
+        conf.set("fileName", fileName);
         // run the actual function (as the parameters are now saved in the configuration)
         createMandelbrotAnimation(nMaps, tmpDir, conf);
     }
@@ -219,7 +221,8 @@ public class MapReduce extends Configured implements Tool{
             LOG.info("MapReduce Job Finished in " + duration + " seconds");
 
             // create video
-            new VideoMaker().createVideo(width, height, frames, outDir, conf);
+            String fileName = conf.get("fileName", "mandelbrot.mp4");
+            new VideoMaker(fileName).createVideo(width, height, frames, outDir, conf);
         } finally {
             fs.delete(tmpDir, true);
             LOG.info("Finished Calculation of Mandelbrot Animation");
@@ -228,12 +231,12 @@ public class MapReduce extends Configured implements Tool{
 
     @Override
     public int run(String[] args) throws Exception {
-        if (args.length != 1 && args.length != 11) {
+        if (args.length != 1 && args.length != 12) {
             System.err.println("Usage: "
                     + getClass().getName()
                     + " <nMaps> [<width> <height> <frames> <maxIterations>" +
                     "<firstScale> <firstTranslateX> <firstTranslateY> " +
-                    "<lastScale> <lastTranslateX> <lastTranslateY>]\n");
+                    "<lastScale> <lastTranslateX> <lastTranslateY> <fileName>]\n");
             ToolRunner.printGenericCommandUsage(System.err);
             return 2;
         }
@@ -252,7 +255,9 @@ public class MapReduce extends Configured implements Tool{
         final double lastTranslateX;
         final double lastTranslateY;
 
-        if (args.length == 11) {
+        final String fileName;
+
+        if (args.length == 12) {
             width = Integer.parseInt(args[1]);
             height = Integer.parseInt(args[2]);
             frames = Integer.parseInt(args[3]);
@@ -265,6 +270,7 @@ public class MapReduce extends Configured implements Tool{
             lastScale = Double.parseDouble(args[8]);
             lastTranslateX = Double.parseDouble(args[9]);
             lastTranslateY = Double.parseDouble(args[10]);
+            fileName = args[11];
         } else {
             width = MandelbrotProperties.STANDARD_WIDTH;
             height = MandelbrotProperties.STANDARD_HEIGHT;
@@ -277,6 +283,7 @@ public class MapReduce extends Configured implements Tool{
             lastScale = MandelbrotProperties.STANDARD_LAST_SCALE;
             lastTranslateX = MandelbrotProperties.STANDARD_LAST_TRANSLATE_X;
             lastTranslateY = MandelbrotProperties.STANDARD_LAST_TRANSLATE_Y;
+            fileName = "mandelbrot.mp4";
         }
 
         long now = System.currentTimeMillis();
@@ -290,33 +297,9 @@ public class MapReduce extends Configured implements Tool{
                     nMaps, width, height, frames, maxIterations,
                     firstScale, firstTranslateX, firstTranslateY,
                     lastScale, lastTranslateX, lastTranslateY,
-                    tmpDir, getConf());
+                    fileName, tmpDir, getConf());
         }
         return 0;
-    }
-
-    /**
-     * Creates a new video file without overriding the old one.
-     * @param name The name of the video file.
-     * @param suffix The suffix of the video file <b><i>without suffix</i></b> (e.g. mp4)
-     * @return A File object to write the new video into.
-     * @throws IOException If there are too many mandelbrot videos.
-     */
-    public static File getVideoFile(String name, String suffix) throws IOException {
-        File dir = new File("mandelbrot_result/mapreduce");
-        if (dir.mkdirs()) {
-            LOG.info("Created directory mandelbrot_result/mapreduce");
-        }
-        File video = new File(dir, name + "." + suffix);
-        int fileTries = 0;
-        while (video.exists() && fileTries < 100) {
-            video = new File(dir, "mandelbrot" + fileTries + ".mp4");
-            fileTries++;
-        }
-        if (video.exists()) {
-            throw new IOException("Too many mandelbrot videos!");
-        }
-        return video;
     }
 
     public static void main(String[] args) throws Exception {

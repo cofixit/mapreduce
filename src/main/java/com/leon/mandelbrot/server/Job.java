@@ -32,6 +32,8 @@ public class Job implements Runnable {
 
     private static final String N_MAPS = "12";
     private static final Log LOG = LogFactory.getLog(Job.class);
+    private static final String FILE_PREFIX = "build/resources/main/result/job";
+    private static final String FILE_SUFFIX = ".mp4";
 
     private String width;
     private String height;
@@ -183,13 +185,14 @@ public class Job implements Runnable {
                 firstTranslateY,
                 lastScale,
                 lastTranslateX,
-                lastTranslateY
+                lastTranslateY,
+                FILE_PREFIX + id + FILE_SUFFIX
         };
 
         int result = 1;
 
         try {
-            result = ToolRunner.run(null, new MapReduceMocker(), args);
+            result = ToolRunner.run(null, new MapReduce(), args);
         } catch(Exception e) {
             e.printStackTrace();
         } finally {
