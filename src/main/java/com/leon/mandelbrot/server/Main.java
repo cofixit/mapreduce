@@ -1,12 +1,13 @@
 package com.leon.mandelbrot.server;
 
-import org.apache.log4j.*;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.handler.HandlerList;
 import org.mortbay.jetty.handler.ResourceHandler;
 import org.mortbay.jetty.servlet.ServletHandler;
 
 public class Main {
+
+    public static final int PORT = 1337;
 
     private final Server server;
     private final ResourceHandler resourceHandler;
@@ -42,10 +43,10 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
-//        Layout layout = new TTCCLayout("DATE");
-//        BasicConfigurator.configure(new ConsoleAppender(layout, ConsoleAppender.SYSTEM_OUT));
-//        Logger logger = Logger.getRootLogger();
-//        logger.setLevel(Level.INFO);
-        new Main(1337).start();
+        int port = Main.PORT;
+        if (args.length >= 1) {
+            port = Integer.parseInt(args[0]);
+        }
+        new Main(port).start();
     }
 }

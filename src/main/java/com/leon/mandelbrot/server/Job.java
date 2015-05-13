@@ -1,13 +1,11 @@
 package com.leon.mandelbrot.server;
 
 import com.leon.mandelbrot.mapreduce.MapReduce;
-import com.leon.mandelbrot.mapreduce.MapReduceMocker;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.util.ToolRunner;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 
 public class Job implements Runnable {
@@ -18,7 +16,7 @@ public class Job implements Runnable {
         FAILED  ("failed"),
         DONE    ("done");
 
-        private String value;
+        private final String value;
 
         Status(String value) {
             this.value = value;
@@ -35,19 +33,19 @@ public class Job implements Runnable {
     private static final String FILE_PREFIX = "build/resources/main/result/job";
     private static final String FILE_SUFFIX = ".mp4";
 
-    private String width;
-    private String height;
-    private String frames;
-    private String maxIterations;
+    private final String width;
+    private final String height;
+    private final String frames;
+    private final String maxIterations;
 
-    private String firstScale;
-    private String firstTranslateX;
-    private String firstTranslateY;
-    private String lastScale;
-    private String lastTranslateX;
-    private String lastTranslateY;
+    private final String firstScale;
+    private final String firstTranslateX;
+    private final String firstTranslateY;
+    private final String lastScale;
+    private final String lastTranslateX;
+    private final String lastTranslateY;
     
-    private Date created;
+    private final Date created;
     private Date started;
     private Date finished;
 
@@ -82,90 +80,6 @@ public class Job implements Runnable {
 
     public String getStatus() {
         return status.value;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public String getWidth() {
-        return width;
-    }
-
-    public void setWidth(String width) {
-        this.width = width;
-    }
-
-    public String getHeight() {
-        return height;
-    }
-
-    public void setHeight(String height) {
-        this.height = height;
-    }
-
-    public String getFrames() {
-        return frames;
-    }
-
-    public void setFrames(String frames) {
-        this.frames = frames;
-    }
-
-    public String getMaxIterations() {
-        return maxIterations;
-    }
-
-    public void setMaxIterations(String maxIterations) {
-        this.maxIterations = maxIterations;
-    }
-
-    public String getFirstScale() {
-        return firstScale;
-    }
-
-    public void setFirstScale(String firstScale) {
-        this.firstScale = firstScale;
-    }
-
-    public String getFirstTranslateX() {
-        return firstTranslateX;
-    }
-
-    public void setFirstTranslateX(String firstTranslateX) {
-        this.firstTranslateX = firstTranslateX;
-    }
-
-    public String getFirstTranslateY() {
-        return firstTranslateY;
-    }
-
-    public void setFirstTranslateY(String firstTranslateY) {
-        this.firstTranslateY = firstTranslateY;
-    }
-
-    public String getLastScale() {
-        return lastScale;
-    }
-
-    public void setLastScale(String lastScale) {
-        this.lastScale = lastScale;
-    }
-
-    public String getLastTranslateX() {
-        return lastTranslateX;
-    }
-
-    public void setLastTranslateX(String lastTranslateX) {
-        this.lastTranslateX = lastTranslateX;
-    }
-
-    public String getLastTranslateY() {
-        return lastTranslateY;
-    }
-
-    public void setLastTranslateY(String lastTranslateY) {
-        this.lastTranslateY = lastTranslateY;
     }
 
     @Override
@@ -213,7 +127,7 @@ public class Job implements Runnable {
         return "{" +
                 "\"id\": " + id + ", " +
                 "\"status\": \"" + status + "\", " +
-                "\"created\": \"" + (created == null ? "" : sdf.format(created)) + "\", " +
+                "\"created\": \"" + (sdf.format(created)) + "\", " +
                 "\"started\": \"" + (started == null ? "" : sdf.format(started)) + "\", " +
                 "\"finished\": \"" + (finished == null ? "" : sdf.format(finished)) + "\", " +
                 "\"width\": " + width + ", " +

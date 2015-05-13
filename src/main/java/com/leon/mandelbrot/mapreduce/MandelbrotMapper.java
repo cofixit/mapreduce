@@ -1,5 +1,6 @@
 package com.leon.mandelbrot.mapreduce;
 
+import com.leon.mandelbrot.standard.MandelbrotProperties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;

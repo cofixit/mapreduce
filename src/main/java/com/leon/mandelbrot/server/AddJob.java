@@ -1,7 +1,5 @@
 package com.leon.mandelbrot.server;
 
-import org.apache.log4j.Logger;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -36,8 +34,6 @@ public class AddJob extends HttpServlet {
                 lastTranslateX,
                 lastTranslateY
         );
-        Thread jobThread = new Thread(job);
-
         int id = JobQueue.getInstance().addJob(job);
 
         response.setContentType("text/json");

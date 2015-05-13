@@ -34,35 +34,11 @@ public class VideoMaker {
 
     private final File videoFile;
 
-    public VideoMaker(String fileName) throws IOException  {
+    public VideoMaker(String fileName) {
         this.videoFile = new File(fileName);
     }
 
     private static final Log LOG = LogFactory.getLog(MapReduce.class);
-
-    /**
-     * Creates a new video file without overriding the old one.
-     * @param name The name of the video file.
-     * @param suffix The suffix of the video file <b><i>without suffix</i></b> (e.g. mp4)
-     * @return A File object to write the new video into.
-     * @throws IOException If there are too many mandelbrot videos.
-     */
-    public File getVideoFile(String name, String suffix) throws IOException {
-        File dir = new File("build/resources/main/mandelbrot_result/mapreduce");
-        if (dir.mkdirs()) {
-            LOG.info("Created directory mandelbrot_result/mapreduce");
-        }
-        File video = new File(dir, name + "." + suffix);
-        int fileTries = 0;
-        while (video.exists() && fileTries < 100) {
-            video = new File(dir, "mandelbrot" + fileTries + ".mp4");
-            fileTries++;
-        }
-        if (video.exists()) {
-            throw new IOException("Too many mandelbrot videos!");
-        }
-        return video;
-    }
 
     public void createVideo(int width, int height, int frames, Path outDir, Configuration conf) throws IOException {
         LOG.info("Starting to create video");
