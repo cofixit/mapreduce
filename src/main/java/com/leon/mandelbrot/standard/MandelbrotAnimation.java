@@ -25,24 +25,54 @@ public class MandelbrotAnimation {
 
     public static void main(String[] args) {
 
-        int width = 1280;
-        int height = 720;
-        int frames = 100;
+        int longArgCount = 11;
+        int shortArgCount = 1;
 
-        double firstScale = 4;
-        double firstTranslateX = -0.1637007;
-        double firstTranslateY = -1.0259398;
-        double lastScale = 0.0000005;
-        double lastTranslateX = -0.1637007;
-        double lastTranslateY = -1.0259398;
+        if (args.length != longArgCount && args.length != shortArgCount) {
+            System.err.println("Usage: "
+                    + MandelbrotAnimation.class.getName()
+                    + " [<width> <height> <frames> <maxIterations>" +
+                    "<firstScale> <firstTranslateX> <firstTranslateY>" +
+                    "<lastScale> <lastTranslateX> <lastTranslateY>] <fileName>");
+            System.exit(2);
+        }
+
+        int width = MandelbrotProperties.STANDARD_WIDTH;
+        int height = MandelbrotProperties.STANDARD_HEIGHT;
+        int frames = MandelbrotProperties.STANDARD_FRAMES;
+        int maxIterations = MandelbrotProperties.STANDARD_MAX_ITERATIONS;
+
+        double firstScale = MandelbrotProperties.STANDARD_FIRST_SCALE;
+        double firstTranslateX = MandelbrotProperties.STANDARD_FIRST_TRANSLATE_X;
+        double firstTranslateY = MandelbrotProperties.STANDARD_FIRST_TRANSLATE_Y;
+        double lastScale = MandelbrotProperties.STANDARD_LAST_SCALE;
+        double lastTranslateX = MandelbrotProperties.STANDARD_LAST_TRANSLATE_X;
+        double lastTranslateY = MandelbrotProperties.STANDARD_LAST_TRANSLATE_Y;
+        
+        String fileName = args[0];
+
+        if (args.length == longArgCount) {
+            width = Integer.parseInt(args[0]);
+            height = Integer.parseInt(args[1]);
+            frames = Integer.parseInt(args[2]);
+            maxIterations = Integer.parseInt(args[3]);
+            
+            firstScale = Integer.parseInt(args[4]);
+            firstTranslateX = Integer.parseInt(args[5]);
+            firstTranslateY = Integer.parseInt(args[6]);
+            
+            lastScale = Integer.parseInt(args[7]);
+            lastTranslateX = Integer.parseInt(args[8]);
+            lastTranslateY = Integer.parseInt(args[9]);
+
+            fileName = args[10];
+        }
 
         SeekableByteChannel ch = null;
         long start = System.currentTimeMillis();
 
         try {
-            File dir = new File("mandelbrot_result/standard");
-            dir.mkdirs();
-            File f = new File("mandelbrot_result/standard/mandelbrot.mp4");
+            File f = new File(fileName);
             ch = NIOUtils.writableFileChannel(f);
 
             MP4Muxer muxer = new MP4Muxer(ch, Brand.MP4);
@@ -67,7 +97,7 @@ public class MandelbrotAnimation {
 
             for (int i = 0; i < frames; i++) {
                 System.out.println("i = " + i + ", s=" + s + ", tx=" + tx + ", ty=" + ty);
-                Mandelbrot m = new Mandelbrot(width, height, s, tx, ty);
+                Mandelbrot m = new Mandelbrot(width, height, maxIterations, s, tx, ty);
                 m.create();
                 BufferedImage rgb = m.getImage();
 

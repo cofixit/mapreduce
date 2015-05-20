@@ -5,7 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class JobQueue extends Vector<Job> {
-    private static JobQueue ourInstance = new JobQueue();
+    private static final JobQueue ourInstance = new JobQueue();
 
     private int index;
     private final ExecutorService executorService;

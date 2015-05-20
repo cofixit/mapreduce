@@ -8,11 +8,14 @@
     <link href="bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-
 <h1>Mandelbrot Manager</h1>
 
+<div id="videocontainer" style="text-align: center; display:none;">
+    <a href="#" style="text-decoration: none; display: block;">Close</a>
+</div>
+
 <table class="table table-striped">
-    <tr>
+    <tr class="headrow">
         <th>#</th>
         <th>Status</th>
         <th>Created</th>
@@ -29,12 +32,22 @@
         <th>Last Tx</th>
         <th>Last Ty</th>
     </tr>
-
-    <!-- planned structure
-    <tr class="data" id="job_1">
+    <tr class="addJobModel">
+        <form action="#">
+            <td></td>
+            <td colspan="4"><input type="submit" value="Add" class="btn btn-primary"></td>
+            <td><input type="text" id="add_width" size="4"></td>
+            <td><input type="text" id="add_height" size="4"></td>
+            <td><input type="text" id="add_frames" size="4"></td>
+            <td><input type="text" id="add_maxIterations" size="4"></td>
+            <td><input type="text" id="add_firstScale" size="4"></td>
+            <td><input type="text" id="add_firstTranslateX" size="4"></td>
+            <td><input type="text" id="add_firstTranslateY" size="4"></td>
+            <td><input type="text" id="add_lastScale" size="4"></td>
+            <td><input type="text" id="add_lastTranslateX" size="4"></td>
+            <td><input type="text" id="add_lastTranslateY" size="4"></td>
+        </form>
     </tr>
-    -->
-
 </table>
 
 <script src="bower_components/jquery/dist/jquery.min.js"></script>

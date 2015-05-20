@@ -32,13 +32,19 @@ import java.util.ArrayList;
 
 public class VideoMaker {
 
+    private final File videoFile;
+
+    public VideoMaker(String fileName) {
+        this.videoFile = new File(fileName);
+    }
+
     private static final Log LOG = LogFactory.getLog(MapReduce.class);
 
     public void createVideo(int width, int height, int frames, Path outDir, Configuration conf) throws IOException {
         LOG.info("Starting to create video");
         double startTime = System.currentTimeMillis();
 
-        File video = MapReduce.getVideoFile("mandelbrot", "mp4");
+        File video = this.videoFile;
         LOG.info("Video saved in " + video.getName());
 
         SeekableByteChannel ch = NIOUtils.writableFileChannel(video);
